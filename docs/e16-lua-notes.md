@@ -129,6 +129,10 @@ Source tags:
 - There are **32 slots per scene**, names up to 16 characters, stored as 32-bit values. Registrations beyond 32 are
   dropped. **[FW] [GUIDE]** The example keeps packed values below 2^24, possibly because of float precision. **[EX]**
 - `var.set` only writes RAM (a name lookup plus a store). It's cheap enough to call on every edit. **[FW]**
+- **Variables outlive script changes.** Names an older version registered keep occupying the 32
+  slots, so a new version's registrations can silently fail and `var.get` returns nil, which errors
+  out of `onInit` partway. Stamp a layout version (`ver`) and call `var.deleteAll()` when it
+  doesn't match; guard reads with `or default`. **[MODEL]** (Suspected on hardware with TB-3PO.)
 - `page.onVarChange` fires only for edits made in the device menu, never for `var.set`. **[GUIDE]**
 - To edit vars on the device: hold an encoder and tap Shift to open the control editor, press
   Shift + encoder 3 for the Scene tab, then choose Script Variables. **[HW]**

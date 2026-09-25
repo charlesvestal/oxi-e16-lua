@@ -23,7 +23,8 @@
 -- Page 2, settings: 1 step size | 2 gate % | 3 slide (Off, Leg = legato,
 --   CC65 = legato + portamento CC 65) | 4 MIDI channel | 5 output port
 --
--- The pattern and settings persist in scene variables (p1-p16 hold the pattern).
+-- The pattern and settings persist in scene variables (p1-p16 hold the pattern;
+-- 31 of 32 slots). A new variable layout version clears old variables first.
 -- Errors are caught and shown instead of stopping the script: the header says
 -- "ERR" and the bottom 8 labels spell out the message for a few seconds.
 --
@@ -350,15 +351,21 @@ function page.onPageChange(prev, curr)
   drawAll(curr)                       -- getPage() may not report curr yet
 end
 
+local VER = 2                         -- bump when the variable layout changes
+
 local function pull()
   local any = false
+  if var.get("ver") ~= VER then         -- old variables (32 slots max): start clean
+    var.deleteAll()
+    var.register("ver", "int", VER)
+  end
   for k = 1, 14 do
     var.register(SN[k], "int", SV[k])
-    SV[k] = clamp(var.get(SN[k]), LO[k], HI[k])
+    SV[k] = clamp(var.get(SN[k]) or SV[k], LO[k], HI[k])
   end
   for i = 1, 16 do
     var.register("p" .. i, "int", 0)
-    P[i] = var.get("p" .. i) & 0x3FFFF
+    P[i] = (var.get("p" .. i) or 0) & 0x3FFFF
     any = any or P[i] > 0
   end
   timing()

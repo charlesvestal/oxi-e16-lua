@@ -6,13 +6,12 @@ ready-wired scene:
 | script | scene | what it is |
 |---|---|---|
 | `euclid.lua` | Euclid | 4-track Euclidean drum sequencer |
-| `lfo.lua` | LFO x4 | four LFOs sending MIDI CC |
+| `lfo.lua` | LFO x16 | 16 LFOs, each on its own MIDI channel and CC, free or tempo-synced |
 | `chords.lua` | Chords | 176 hand-voiced chord pads on 11 pages |
 | `modseq.lua` | Mod Seq | 16-step CC modulation sequencer with glide |
 | `tb3po.lua` | TB-3PO | generative 303-style acid sequencer (port of the O&C / Phazerville applet, GPL-3.0) |
 
-Euclid and TB-3PO have run on hardware. The others pass the desktop tests and fit the
-memory model (see [Memory](#memory)).
+All five have run on hardware (firmware 1.2.0).
 
 ## Loading a script onto the E16
 
@@ -23,7 +22,7 @@ scene as a template:
 
     E=/path/to/your/OXI/E16/folder; T="$E/Scenes/Some Scene.oxie16"   # any exported scene as template
     python3 tools/make_scene.py "$T" euclid.lua "$E/Scenes/Euclid.oxie16" "$E/Scripts/euclid.e16script" --title Euclid --pages Pat,Set
-    python3 tools/make_scene.py "$T" lfo.lua    "$E/Scenes/LFO.oxie16"    "$E/Scripts/lfo.e16script"    --title "LFO x4" --pages LFO,Set
+    python3 tools/make_scene.py "$T" lfo.lua    "$E/Scenes/LFO.oxie16"    "$E/Scripts/lfo.e16script"    --title "LFO x16" --pad-pages 4 --settings-page 5
     python3 tools/make_scene.py "$T" chords.lua "$E/Scenes/Chords.oxie16" "$E/Scripts/chords.e16script" --title Chords --pad-pages 11 --settings-page 12
     python3 tools/make_scene.py "$T" modseq.lua "$E/Scenes/ModSeq.oxie16" "$E/Scripts/modseq.e16script" --title "Mod Seq"
     python3 tools/make_scene.py "$T" tb3po.lua  "$E/Scenes/TB-3PO.oxie16" "$E/Scripts/tb3po.e16script" --title TB-3PO
@@ -75,19 +74,35 @@ the note name (`C2`). The header shows `EUC > 120` while playing and `EUC | 120`
 Defaults are a GM drum kit on channel 10: kick 36 E(4,16), snare 38 E(2,16) rotated by 4,
 closed hat 42 E(8,16), open hat 46 E(3,16) rotated by 2.
 
-## LFO x4
+## LFO x16
 
-**Page 1:** one LFO per row.
+A modulation bank for several synths: 16 LFOs, each with its own MIDI channel and CC number.
 
-|      | col 1 (Shape) | col 2 (Rate) | col 3 (Depth) | col 4 (Center) |
+**Pages 1–4:** four LFOs per page, one per row (page 1 = LFO 1–4 … page 4 = LFO 13–16).
+
+|      | col 1 | col 2 | col 3 | col 4 |
 |------|---|---|---|---|
-| turn | Sin, Tri, SawU, SawD, Sqr, S&H | 20 s … 6.4 Hz | −100…+100 % | 0–127 |
-| push | on/off | restart phase | freeze | restart all |
+| turn | Shape (Sin, Tri, SawU, SawD, Sqr, S&H) | Rate | Depth −100…+100 % | Center 0–127 |
+| push | on/off | **Sync/Free** | freeze | **Dest** |
 
-The Center ring shows the live output. When an LFO is off it sends its center value, so
-its Center encoder works as a plain CC knob. A frozen LFO holds its value and shows a different color.
+- **Rate** is free (20 s … 6.4 Hz) or **synced** to the tempo (8 bars … 1/32, with triplets).
+  Pushing Rate toggles between them and keeps about the same speed. Synced LFOs follow one
+  beat counter, so they stay locked together.
+- **Dest** switches the row's first two encoders to that LFO's **MIDI channel** and **CC
+  number** (labels `Ch3`, `CC74`). Push again to go back.
+- The Center ring shows the live output. An LFO that is off sends its center value when it's
+  switched off or its Center is turned, so it works as a plain CC knob. The header shows the page's
+  LFOs and how many are running in total (`LFO 1-4 3on`).
 
-**Page 2:** CC numbers for LFO 1–4 (defaults 74, 71, 1, 10), MIDI channel, output port.
+**Page 5, settings:**
+1. output port. Push = restart all, which realigns synced LFOs to the downbeat.
+2. BPM for synced rates
+3. push = all off
+
+By default only LFO 1 runs. Each page starts on its own MIDI channel (page 1 = channel 1 …), with
+the rows on CC 74, 71, 1 and 10, so a page is effectively one synth. There's no MIDI clock
+input for Lua (firmware 1.2), so synced rates follow the BPM setting; a future clock callback
+would only need to drive the beat counter.
 
 ## Chords
 
@@ -201,14 +216,18 @@ Measured on firmware 1.2.0 with probe scenes (the tools are in `tools/`):
   about **46.6 KB** modeled.
 - **Size** is not the constraint: 7,000-byte scripts load, and the app caps them at 8,000.
 
-| script | uploaded | load peak | margin | on hardware |
-|---|---|---|---|---|
-| modseq | 3.1 KB | 29.6 KB | 12.9 KB | |
-| lfo | 3.6 KB | 32.1 KB | 10.4 KB | |
-| euclid | 4.4 KB | 35.5 KB | 7.0 KB | runs |
-| chords | 5.1 KB | 36.9 KB | 5.6 KB | |
-| tb3po | 6.1 KB | 42.5 KB | 0.1 KB | an earlier version at 42.4 KB runs |
-| example step sequencer | 6.2 KB | 43.6 KB | −1.1 KB | fails to load |
+| script | uploaded | load peak | margin |
+|---|---|---|---|
+| modseq | 3.1 KB | 29.6 KB | 12.9 KB |
+| euclid | 4.4 KB | 35.5 KB | 7.0 KB |
+| chords | 5.1 KB | 36.9 KB | 5.6 KB |
+| lfo | 5.4 KB | 40.9 KB | 1.6 KB |
+| tb3po | 6.1 KB | 42.5 KB | 0.1 KB |
+| example step sequencer | 6.2 KB | 43.6 KB | −1.1 KB (fails to load) |
+
+All five scripts run on hardware. Scene variables are also limited: 32 per scene, and they outlive
+script changes, so `lfo.lua` and `tb3po.lua` stamp a layout version and clear old variables
+when it changes.
 
 If a scene shows its default title and labels and doesn't respond, the script didn't fit. To
 see errors on the device (there's no Lua Debug view), `tools/make_diag.py` makes a copy of a scene

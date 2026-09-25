@@ -22,7 +22,7 @@ local function pattern()                  -- note-ons of one 16-step bar, "note@
 end
 local function notes(p) local c = 0; for _ in p:gmatch("@") do c = c + 1 end; return c end
 
-E.store.seed = 0x3F2A                     -- first run with a known seed
+E.store.seed, E.store.ver = 0x3F2A, 2        -- a known seed (current layout)
 E.load("tb3po.lua")
 E.run(60)
 check(E.title == "Gen 3F2A", "first run generates from the seed (" .. E.title .. ")")
