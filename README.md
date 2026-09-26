@@ -6,7 +6,7 @@ ready-wired scene:
 | script | scene | what it is |
 |---|---|---|
 | `euclid.lua` | Euclid | 4-track Euclidean drum sequencer |
-| `lfo.lua` | LFO x16 | 16 LFOs, each on its own MIDI channel and CC, free or tempo-synced |
+| `lfo.lua` | LFOx16 | 16 LFOs, each on its own MIDI channel and CC, free or tempo-synced |
 | `chords.lua` | Chords | 176 hand-voiced chord pads on 11 pages |
 | `modseq.lua` | Mod Seq | 16-step CC modulation sequencer with glide |
 | `tb3po.lua` | TB-3PO | generative 303-style acid sequencer (port of the O&C / Phazerville applet, GPL-3.0) |
@@ -22,7 +22,7 @@ scene as a template:
 
     E=/path/to/your/OXI/E16/folder; T="$E/Scenes/Some Scene.oxie16"   # any exported scene as template
     python3 tools/make_scene.py "$T" euclid.lua "$E/Scenes/Euclid.oxie16" "$E/Scripts/euclid.e16script" --title Euclid --pages Pat,Set
-    python3 tools/make_scene.py "$T" lfo.lua    "$E/Scenes/LFO.oxie16"    "$E/Scripts/lfo.e16script"    --title "LFO x16" --pad-pages 4 --settings-page 5
+    python3 tools/make_scene.py "$T" lfo.lua    "$E/Scenes/LFOx16.oxie16" "$E/Scripts/lfo.e16script"    --title LFOx16 --pad-pages 4 --settings-page 5
     python3 tools/make_scene.py "$T" chords.lua "$E/Scenes/Chords.oxie16" "$E/Scripts/chords.e16script" --title Chords --pad-pages 11 --settings-page 12
     python3 tools/make_scene.py "$T" modseq.lua "$E/Scenes/ModSeq.oxie16" "$E/Scripts/modseq.e16script" --title "Mod Seq"
     python3 tools/make_scene.py "$T" tb3po.lua  "$E/Scenes/TB-3PO.oxie16" "$E/Scripts/tb3po.e16script" --title TB-3PO
@@ -83,7 +83,7 @@ the note name (`C2`). The header shows `EUC > 120` while playing and `EUC | 120`
 Defaults are a GM drum kit on channel 10: kick 36 E(4,16), snare 38 E(2,16) rotated by 4,
 closed hat 42 E(8,16), open hat 46 E(3,16) rotated by 2.
 
-## LFO x16
+## LFOx16
 
 A modulation bank for several synths: 16 LFOs, each with its own MIDI channel and CC number.
 
