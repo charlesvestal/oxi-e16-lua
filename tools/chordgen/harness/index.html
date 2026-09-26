@@ -1,1 +1,326 @@
-<!doctype html><html><body>chord sets</body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chord Sets</title>
+<style>
+:root { --bg: #f6f5f2; --fg: #1d1d1f; --muted: #6b6b70; --line: #d9d7d2; --pad: #ffffff;
+  --accent: #2f6fde; --hot: #ffcf4a; --warn: #c2410c; }
+@media (prefers-color-scheme: dark) { :root { --bg: #141416; --fg: #ececef; --muted: #9a9aa2;
+  --line: #2c2c31; --pad: #1f1f23; --accent: #6ea0ff; --hot: #d9a21b; --warn: #fb923c; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 320px; }
+@media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+h1 { font-size: 18px; margin: 0 12px 0 0; }
+select, button, input, textarea { font: inherit; color: inherit; background: var(--pad);
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+button { cursor: pointer; }
+button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pad { aspect-ratio: 1.4; display: flex; flex-direction: column; justify-content: center;
+  align-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--pad);
+  cursor: pointer; user-select: none; }
+.pad .lab { font: 600 20px ui-monospace, monospace; }
+.pad .sym { color: var(--muted); font-size: 12px; }
+.pad.lit { background: var(--hot); color: #111; }
+.pad.sel { outline: 2px solid var(--accent); }
+.bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+label.ctl { display: flex; gap: 4px; align-items: center; color: var(--muted); }
+label.ctl input[type=number] { width: 64px; }
+aside section { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+aside h2 { font-size: 13px; margin: 0 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+td { padding: 2px 4px; border-bottom: 1px solid var(--line); }
+td.v { text-align: right; font-weight: 600; }
+td.r { text-align: right; color: var(--muted); }
+tr.out td.v { color: var(--warn); }
+textarea { width: 100%; min-height: 56px; }
+#status { color: var(--muted); font-size: 12px; }
+#msg { grid-column: 1 / -1; color: var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Chord Sets</h1>
+    <select id="set" aria-label="Set"></select>
+    <button id="ref">Hear reference</button>
+    <button id="tone">E-piano</button>
+    <span id="key"></span>
+  </header>
+  <div id="msg" hidden></div>
+  <div>
+    <div class="grid" id="grid"></div>
+    <div class="bar">
+      <button data-row="0">Row 1</button><button data-row="1">Row 2</button>
+      <button data-row="2">Row 3</button><button data-row="3">Row 4</button>
+      <button id="all">Grid</button><button id="walk">Random walk</button>
+      <button id="stop">Stop</button>
+    </div>
+    <div class="bar">
+      <label class="ctl">BPM <input id="bpm" type="number" min="40" max="200" value="84"></label>
+      <label class="ctl">Transpose <input id="tr" type="number" min="-12" max="12" value="0"></label>
+      <label class="ctl">Octave <input id="oct" type="number" min="-2" max="2" value="0"></label>
+      <label class="ctl">Velocity <input id="vel" type="number" min="1" max="127" value="100"></label>
+      <label class="ctl">Gate s (0 = hold) <input id="gate" type="number" min="0" max="4" step="0.1" value="0"></label>
+      <label class="ctl">Strum ms <input id="strum" type="number" min="0" max="200" value="20"></label>
+      <label class="ctl">Down <input id="down" type="checkbox"></label>
+    </div>
+  </div>
+  <aside>
+    <section>
+      <h2>Verdict</h2>
+      <div class="bar" id="verdict">
+        <button data-v="keep">Keep</button><button data-v="fix">Fix</button><button data-v="drop">Drop</button>
+      </div>
+      <textarea id="note" placeholder="Notes on the whole set"></textarea>
+      <h2 id="padh">Pad note</h2>
+      <textarea id="padnote" placeholder="Play a pad, then note it here"></textarea>
+      <div id="status"></div>
+    </section>
+    <section>
+      <h2>Metrics <span id="rtype"></span></h2>
+      <table id="metrics"></table>
+    </section>
+  </aside>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const LABELS = {diatonic: "diatonic /16", shapes: "distinct shapes", voices_min: "voices min",
+  voices_max: "voices max", bass_lo: "bass low", bass_hi: "bass high", top_lo: "top low",
+  top_hi: "top high", span: "span avg", top_step: "top-line step", vl_row: "voice move (rows)",
+  vl_all: "voice move (all)", vl_max: "voice move max", mud: "mud", unnamed: "unnamed"};
+let data = null, cur = null, back = null, sel = -1;
+let feedback = {sets: {}};
+let tone = "ep", timers = [], sounding = [];
+
+// ---------- audio ----------
+let ctx = null, master = null;
+function audio() {
+  if (!ctx) {
+    ctx = new AudioContext();
+    const comp = ctx.createDynamicsCompressor();
+    master = ctx.createGain();
+    master.gain.value = 0.5;
+    master.connect(comp).connect(ctx.destination);
+  }
+  if (ctx.state === "suspended") ctx.resume();
+  return ctx;
+}
+const hz = (n) => 440 * Math.pow(2, (n - 69) / 12);
+
+function voiceEP(n, t, amp) {
+  const car = ctx.createOscillator(), mod = ctx.createOscillator();
+  const mg = ctx.createGain(), g = ctx.createGain();
+  car.frequency.value = hz(n); mod.frequency.value = hz(n) * 1.0;
+  mg.gain.setValueAtTime(hz(n) * 2.2, t);
+  mg.gain.exponentialRampToValueAtTime(hz(n) * 0.15, t + 1.2);
+  mod.connect(mg).connect(car.frequency);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(amp, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(amp * 0.25, t + 2.5);
+  car.connect(g).connect(master);
+  car.start(t); mod.start(t);
+  return {g, oscs: [car, mod], rel: 0.35};
+}
+function voicePad(n, t, amp) {
+  const f = ctx.createBiquadFilter(), g = ctx.createGain();
+  f.type = "lowpass"; f.frequency.value = 1800; f.Q.value = 0.3;
+  const oscs = [-7, 7].map((c) => {
+    const o = ctx.createOscillator();
+    o.type = "sawtooth"; o.frequency.value = hz(n); o.detune.value = c;
+    o.connect(f); o.start(t);
+    return o;
+  });
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(amp * 0.6, t + 0.4);
+  f.connect(g).connect(master);
+  return {g, oscs, rel: 1.2};
+}
+function release(v, t) {
+  v.g.gain.cancelScheduledValues(t);
+  v.g.gain.setValueAtTime(Math.max(v.g.gain.value, 0.0001), t);
+  v.g.gain.exponentialRampToValueAtTime(0.0001, t + v.rel);
+  v.oscs.forEach((o) => o.stop(t + v.rel + 0.05));
+}
+function releaseAll() {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  sounding.forEach((s) => s.voices.forEach((v) => release(v, t)));
+  sounding = [];
+  document.querySelectorAll(".pad.lit").forEach((p) => p.classList.remove("lit"));
+}
+
+function playPad(i) {
+  if (!cur) return;
+  audio();
+  releaseAll();
+  const shift = +$("tr").value + 12 * +$("oct").value;
+  const notes = cur.pads[i].notes.map((n) => n + shift);
+  if ($("down").checked) notes.reverse();
+  const amp = 0.12 * (+$("vel").value / 127) / Math.sqrt(notes.length / 4);
+  const t0 = ctx.currentTime + 0.01, strum = +$("strum").value / 1000;
+  const make = tone === "ep" ? voiceEP : voicePad;
+  const s = {voices: notes.map((n, k) => make(n, t0 + k * strum, amp))};
+  sounding.push(s);
+  const pad = $("grid").children[i];
+  pad.classList.add("lit");
+  select(i);
+  const gate = +$("gate").value;
+  if (gate > 0) {
+    setTimeout(() => {
+      if (sounding.includes(s)) {
+        s.voices.forEach((v) => release(v, ctx.currentTime));
+        sounding = sounding.filter((x) => x !== s);
+        pad.classList.remove("lit");
+      }
+    }, gate * 1000);
+  }
+}
+
+// ---------- sequencing ----------
+function stop() { timers.forEach(clearTimeout); timers = []; $("walk").classList.remove("on"); releaseAll(); }
+function step() { return 2 * 60000 / Math.max(40, +$("bpm").value || 84); }
+function sequence(order) {
+  stop();
+  order.forEach((i, k) => timers.push(setTimeout(() => playPad(i), k * step())));
+  timers.push(setTimeout(releaseAll, order.length * step()));
+}
+function walk() {
+  if ($("walk").classList.contains("on")) return stop();
+  stop();
+  $("walk").classList.add("on");
+  let i = Math.floor(Math.random() * 16);
+  const tick = () => {
+    playPad(i);
+    let j = i;
+    while (j === i) j = Math.floor(Math.random() * 16);
+    i = j;
+    timers.push(setTimeout(tick, step()));
+  };
+  tick();
+}
+
+// ---------- view ----------
+function select(i) {
+  sel = i;
+  [...$("grid").children].forEach((p, k) => p.classList.toggle("sel", k === i));
+  $("padh").textContent = i < 0 ? "Pad note" : `Pad ${i + 1} note (${cur.pads[i].symbol})`;
+  $("padnote").value = i < 0 ? "" : (fb(cur).pads[i] || "");
+}
+function fb(set) {
+  return feedback.sets[set.slug] || (feedback.sets[set.slug] = {verdict: "", note: "", pads: {}});
+}
+function show(set) {
+  stop();
+  cur = set;
+  $("grid").innerHTML = "";
+  set.pads.forEach((p, i) => {
+    const d = document.createElement("div");
+    d.className = "pad";
+    d.innerHTML = `<div class="lab"></div><div class="sym"></div>`;
+    d.querySelector(".lab").textContent = p.label;
+    d.querySelector(".sym").textContent = set.source === "generated" ? p.symbol : p.notes.join(" ");
+    d.title = p.notes.join(" ");
+    d.onclick = () => playPad(i);
+    $("grid").appendChild(d);
+  });
+  const m = set.metrics;
+  $("key").textContent = `key ${m.key} (fit ${m.fit}) · ${set.type} · ${set.source}`;
+  const r = data.ranges[set.type] || {};
+  $("rtype").textContent = `vs ${set.type} reference min · median · max`;
+  $("metrics").innerHTML = "";
+  Object.keys(LABELS).forEach((k) => {
+    const tr = document.createElement("tr"), rg = r[k];
+    if (rg && (m[k] < rg[0] || m[k] > rg[2])) tr.className = "out";
+    tr.innerHTML = `<td></td><td class="v"></td><td class="r"></td>`;
+    tr.children[0].textContent = LABELS[k];
+    tr.children[1].textContent = m[k];
+    tr.children[2].textContent = rg ? rg.join(" · ") : "";
+    $("metrics").appendChild(tr);
+  });
+  const f = fb(set);
+  document.querySelectorAll("#verdict button").forEach((b) => b.classList.toggle("on", b.dataset.v === f.verdict));
+  $("note").value = f.note;
+  $("ref").disabled = !(set.reference || back);
+  $("ref").textContent = back ? "Back to " + back.name : "Hear reference";
+  $("set").value = (back || set).slug;
+  select(-1);
+}
+
+// ---------- feedback ----------
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  $("status").textContent = "saving…";
+  saveTimer = setTimeout(async () => {
+    try {
+      const r = await fetch("/feedback", {method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(feedback)});
+      $("status").textContent = r.ok ? "saved " + new Date().toLocaleTimeString() : "save failed: " + r.status;
+    } catch (e) { $("status").textContent = "save failed: " + e.message; }
+  }, 500);
+}
+
+// ---------- wiring ----------
+document.querySelectorAll("[data-row]").forEach((b) => b.onclick = () => {
+  const r = +b.dataset.row; sequence([0, 1, 2, 3].map((k) => r * 4 + k));
+});
+$("all").onclick = () => sequence([...Array(16).keys()]);
+$("walk").onclick = walk;
+$("stop").onclick = stop;
+$("tone").onclick = () => { tone = tone === "ep" ? "pad" : "ep"; $("tone").textContent = tone === "ep" ? "E-piano" : "Pad"; };
+$("set").onchange = () => { back = null; show(data.sets.find((s) => s.slug === $("set").value)); };
+$("ref").onclick = () => {
+  if (back) { const b = back; back = null; show(b); return; }
+  const r = data.sets.find((s) => s.slug === "ref_" + cur.reference);
+  if (r) { const from = cur; show(r); back = from; $("ref").textContent = "Back to " + from.name; $("ref").disabled = false; }
+};
+document.querySelectorAll("#verdict button").forEach((b) => b.onclick = () => {
+  const f = fb(cur); f.verdict = f.verdict === b.dataset.v ? "" : b.dataset.v;
+  document.querySelectorAll("#verdict button").forEach((x) => x.classList.toggle("on", x.dataset.v === f.verdict));
+  save();
+});
+$("note").oninput = () => { fb(cur).note = $("note").value; save(); };
+$("padnote").oninput = () => {
+  if (sel < 0) return;
+  const f = fb(cur);
+  if ($("padnote").value) f.pads[sel] = $("padnote").value; else delete f.pads[sel];
+  save();
+};
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, textarea")) return;
+  const k = "1234qwerasdfzxcv".indexOf(e.key.toLowerCase());
+  if (k >= 0) playPad(k);
+  if (e.key === " ") { e.preventDefault(); stop(); }
+});
+
+(async function init() {
+  try {
+    const r = await fetch("/data.json");
+    if (!r.ok) throw new Error("no data.json: run python3 tools/chordgen/build.py");
+    data = await r.json();
+  } catch (e) {
+    $("msg").hidden = false; $("msg").textContent = e.message; return;
+  }
+  try {
+    const r = await fetch("/feedback.json");
+    if (r.ok) feedback = await r.json();
+    feedback.sets = feedback.sets || {};
+  } catch (e) { /* first run */ }
+  data.sets.forEach((s) => {
+    const o = document.createElement("option");
+    o.value = s.slug;
+    o.textContent = s.source === "reference" ? s.name + " — reference (local)" : s.name;
+    $("set").appendChild(o);
+  });
+  show(data.sets[0]);
+})();
+</script>
+</body>
+</html>
