@@ -158,3 +158,27 @@ Source tags:
   value offset into the printable range, and parse it with `string.byte`/`find` on demand. That
   avoids tables and escapes. The whole string counts toward the script's size, and compiling it
   raises the load-time memory peak. **[MODEL]**
+
+## USB-MIDI SysEx protocol (what the OXI App sends)
+
+Captured from OXI App uploads on firmware 1.2.0 by logging CoreMIDI in the app. `tools/e16push.py`
+implements it. **[HW]**
+
+- Every message starts `F0 00 21 5B 02 01`: OXI's manufacturer ID, then `02 01` for the E16.
+- **Firmware version:** send `03 00`. Firmware 1.2.0 replies `03 00 03 01 02 0E 03 02 02 0E 03 00 00 00`
+  (layout not decoded).
+- **Read a slot's scene name:** send `07 00 <slot 0–15> 00 00 00 00 00 00`. The reply is `08 00 <slot> 00`
+  plus packed data: `13 00 50 00`, the name (NUL-padded), and more fields.
+- **Upload:** `08 <kind> <slot 0–15> <index>` plus packed data. The device answers each message with
+  `08 53` (ACK). The app sends kind 0 (scene header, 80-byte body, starts with the name), then kind 1
+  for pages 0–11 (976-byte body each), then kind 4 (script: the minified code padded with zeros to
+  8192 bytes, in one ~9.4 KB SysEx message). It doesn't split anything into chunks.
+- **A script can be uploaded on its own.** Kind 4 alone replaces the scene's code and leaves its pages
+  and variables as they are. The new code runs when the scene is next opened. **[HW]**
+- **Packed data:** `total length` (u32 big-endian, body + 8), `11`, `body length` (u16 big-endian), `00`, the body,
+  then a CRC (u32 big-endian). Everything is converted to 7-bit form: each 7 bytes become a byte of
+  high bits (bit *j* = byte *j*) followed by the 7 low-7-bit bytes.
+- **CRC:** the STM32 hardware CRC-32 of the body: poly `0x04C11DB7`, init `0xFFFFFFFF`, 32-bit
+  little-endian words (zero-padded), no reflection, no final XOR. It matched every captured message.
+- The header and page bodies are only partly decoded (names, lengths). The encoder wiring inside
+  the 976-byte page body isn't mapped yet.

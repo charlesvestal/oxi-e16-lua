@@ -38,6 +38,15 @@ Then:
 3. Drag it onto a slot under *On Device*. This uploads the scene and its script.
 4. On the E16, pick that scene from the home screen.
 
+**Faster loop while editing a script.** Once a scene is on the device, `tools/e16push.py` replaces
+just its script over USB-MIDI, without the app (needs `pip install mido python-rtmidi`):
+
+    python3 tools/e16push.py list                # scenes by home-screen encoder, 1-16
+    python3 tools/e16push.py push 2 euclid.lua   # minify and send to the scene on encoder 2
+
+Reopen the scene on the E16 to run the new code. Pages, labels and script variables aren't touched,
+so use the app when the wiring changes.
+
 To switch pages on the E16, tap Shift and then a page (P.1, P.2, …). Every script keeps
 running on any page, and its settings are saved in the scene's script variables.
 
