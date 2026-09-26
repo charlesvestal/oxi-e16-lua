@@ -1,14 +1,14 @@
 {
   "name": "Impressionist",
-  "type": "pedal",
+  "type": "functional",
   "key": "E",
   "style": "open",
   "reference": "impressionist",
-  "register": {"bass": [36, 52], "top": [71, 71]},
+  "register": {"bass": [36, 52], "top": [64, 76]},
   "rows": [
-    ["Emaj9", "Cmaj7#11", "Amaj9", "Fmaj7#11"],
-    ["Gmaj7", "D69", "Bm11", "C#m11"],
-    ["G#m7", "Db9sus4", "Fm7b5", "E6"],
-    ["A69", "G6", "Cmaj7#11", "Esus2"]
+    ["Emaj9", "F#m11", "G#m7", "Amaj7#11"],
+    ["Cmaj7#11", "Dmaj9", "Emaj9", "F#m11"],
+    ["C#m9", "Bsus2", "Amaj9", "G#m7"],
+    ["Gmaj7#11", "Fmaj7#11", "Emaj9", "Esus2"]
   ]
 }

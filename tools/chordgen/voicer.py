@@ -132,8 +132,15 @@ def node_cost(notes, style, reg):
     return c
 
 
+TOP_STEP, TOP_WEIGHT = 2, 3   # the top voice should sing: about a whole step per pad
+PEDAL_WEIGHT = 6              # pedal sets hold their top note
+
+
 def move_cost(a, b, pedal):
-    return vl(a, b) + (6 if pedal else 1) * abs(a[-1] - b[-1])
+    step = abs(a[-1] - b[-1])
+    if pedal:
+        return vl(a, b) + PEDAL_WEIGHT * step
+    return vl(a, b) + TOP_WEIGHT * abs(step - TOP_STEP)
 
 
 def voice_set(spec):
