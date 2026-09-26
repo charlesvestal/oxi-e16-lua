@@ -64,7 +64,7 @@
 
 local DT = 20.1            -- real update period: firmware fires after > rate ms
 local FULL = 16383         -- full LED ring
-local C_ON, C_HIT, C_MUTE = 0, 50, 75 -- LED hue rotation (0-100)
+local C_ON, C_HIT, C_MUTE = 0, 50, 75 -- LED color: index into the app's 100-color palette
 
 -- V[id]: ids 1-16 are the encoder values, row t = track t, columns are
 -- len, pulses, rotation, note. V[16 + id] holds push flags: mute (col 1), invert (col 2).

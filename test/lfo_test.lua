@@ -32,6 +32,8 @@ check(E.title == "LFO 1-4 1on", "title shows page and running count (" .. E.titl
 check(E.labels[1] == "Sin" and E.labels[5] == "Tri" and E.labels[9] == "Sqr" and E.labels[13] == "S&H",
   "row shapes: " .. table.concat({E.labels[1], E.labels[5], E.labels[9], E.labels[13]}, " "))
 check(row(1) == "Sin 2.5s +50 64", "row 1 labels (0.4 Hz shows its 2.5 s period): " .. row(1))
+local function rowc(r) return table.concat({E.rings[r * 4 - 3].c, E.rings[r * 4 - 2].c, E.rings[r * 4 - 1].c, E.rings[r * 4].c}, " ") end
+check(rowc(1) == "18 18 18 18" and rowc(2) == "34 34 34 34", "rows are blue when playing, white when off: " .. rowc(1) .. " / " .. rowc(2))
 
 -- only LFO 1 runs by default: channel 1, CC 74
 E.sent = {}
@@ -132,7 +134,7 @@ press(1, 19)
 E.run(60)
 E.sent = {}
 E.run(1000)
-check(#ccs(3, 20) == 0 and E.rings[4].c == 50, "freeze holds LFO 1")
+check(#ccs(3, 20) == 0 and rowc(1) == "50 50 50 50", "freeze holds LFO 1, row pink (" .. rowc(1) .. ")")
 press(1, 19)
 show(5)
 press(5, 51)

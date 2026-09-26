@@ -103,8 +103,10 @@ Source tags:
   **`leds.updateByIndex(index, value, color)`**, which takes priority there. **[HW]**
 - Index overrides are per physical ring and persist across pages. Reset them with `leds.reset(i)` when
   leaving your page, and redraw on return. **[GUIDE] [HW]**
-- `color` is a **hue rotation, 0–100** (the manual says 0–15). 100 may equal 0 (a full turn), so the
-  example's playhead color of 100 may be invisible. **[FW] [GUIDE] [?]**
+- `color` is an **index into the OXI App's 100-color palette** (its 10×10 encoder color picker,
+  read left to right, top to bottom, from 0), not a hue rotation as the guide calls it. It's absolute:
+  the scene's encoder colors don't shift it. For example, 6 = dark blue, 18 = light blue, 34 = white, 50 = pink.
+  **[HW]**
 - `value` is 0–16383, and floats are floored. There's a batch form: `leds.updateByIndex({{i, v, c}, …})`. **[GUIDE]**
 
 ## Labels and title

@@ -11,6 +11,7 @@
 --   Dest flips the row's first two encoders to its MIDI channel and CC number
 --   (labels "Ch3", "CC74"); push it again to go back. A destination (or output
 --   port) left behind is sent the center value.
+--   Rows are blue while playing, white when off, pink when frozen.
 --   The Center ring shows the live output. An LFO that is off sends its center
 --   value when it is switched off or its Center is turned (a plain CC knob).
 -- Page 5, settings: 1 output port (0 = all), push = restart all (realigns synced
@@ -66,7 +67,7 @@
 local N, PAGES, SETP = 16, 4, 5
 local DT = 20.1            -- real update period: firmware fires after > 20 ms
 local FULL = 16383
-local C_ON, C_OFF, C_FRZ, C_DEST, C_SYNC = 0, 75, 50, 25, 35   -- LED hue rotation (0-100)
+local C_ON, C_OFF, C_FRZ = 18, 34, 50   -- LED colors (0-99 in the app's 10x10 grid): blue, white, pink
 local SHN = {"Sin", "Tri", "SawU", "SawD", "Sqr", "S&H"}
 -- Sync divisions: beats per cycle, and labels. Rate values 85-96 select them.
 local DIVB = {32, 16, 8, 4, 2, 1, 2 / 3, 1 / 2, 1 / 3, 1 / 4, 1 / 6, 1 / 8}
@@ -131,15 +132,15 @@ local function draw(t, full, pg)
   if not full then return end
   local d, r = DP[t], RT[t]
   if DV[t] > 0 then
-    set(b + 1, (CH[t] - 1) * FULL // 15, C_DEST)
-    set(b + 2, CC[t] * FULL // 127, C_DEST)
+    set(b + 1, (CH[t] - 1) * FULL // 15, c)
+    set(b + 2, CC[t] * FULL // 127, c)
     lab(b + 1, "Ch" .. CH[t])
     lab(b + 2, (CC[t] < 100 and "CC" or "C") .. CC[t])
   else
     set(b + 1, (SH[t] - 1) * FULL // 5, c)
     lab(b + 1, SHN[SH[t]])
     if r > 84 then
-      set(b + 2, (r - 85) * FULL // 11, C_SYNC)
+      set(b + 2, (r - 85) * FULL // 11, c)
       lab(b + 2, DIVL[r - 84])
     else
       -- whole-number formatting only: the device's printf may not support %f
@@ -161,7 +162,7 @@ local function drawAll(pg)
   elseif pg == SETP then
     leds.updateByIndex(1, out * FULL // 15, C_ON)
     slots.update(1, out == 0 and "All" or "O" .. out)
-    leds.updateByIndex(2, (bpm - 20) * FULL // 280, C_SYNC)
+    leds.updateByIndex(2, (bpm - 20) * FULL // 280, C_ON)
     slots.update(2, "" .. bpm)
     slots.update(3, "Stop")
   end

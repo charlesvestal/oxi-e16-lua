@@ -70,7 +70,7 @@
 
 local DT = 20.1            -- real update period: firmware fires after > rate ms
 local FULL = 16383
-local C_ON, C_PLAY, C_ACC, C_SLIDE = 0, 50, 85, 25   -- LED hue rotation (0-100)
+local C_ON, C_PLAY, C_ACC, C_SLIDE = 0, 50, 85, 25   -- LED color: index into the app's 100-color palette
 local NT = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
 local SCL = {"023578A", "024579B", "023579A", "013578A", "024579A", "023578B", "0357A", "02479"}
 local SCN = {"Min", "Maj", "Dor", "Phr", "Mix", "HMin", "PMin", "PMaj"}

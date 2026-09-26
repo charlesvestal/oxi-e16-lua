@@ -59,7 +59,7 @@
 
 local DT = 20.1            -- real update period: firmware fires after > rate ms
 local FULL = 16383
-local C_ON, C_PLAY, C_GLIDE = 0, 50, 25   -- LED hue rotation (0-100)
+local C_ON, C_PLAY, C_GLIDE = 0, 50, 25   -- LED color: index into the app's 100-color palette
 
 -- Step values (page 1) and glide bit mask
 local S = {0, 16, 32, 48, 64, 80, 96, 112, 127, 112, 96, 80, 64, 48, 32, 16}

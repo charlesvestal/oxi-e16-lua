@@ -101,6 +101,7 @@ A modulation bank for several synths: 16 LFOs, each with its own MIDI channel an
 - **Dest** switches the row's first two encoders to that LFO's **MIDI channel** and **CC
   number** (labels `Ch3`, `CC74`). Push again to go back. The CC it leaves behind is sent the
   center value, and so is the old port when the output changes.
+- A row is **blue** while its LFO plays, **white** when it's off and **pink** when frozen.
 - The Center ring shows the live output. An LFO that is off sends its center value when it's
   switched off or its Center is turned, so it works as a plain CC knob. The header shows the page's
   LFOs and how many are running in total (`LFO 1-4 3on`).

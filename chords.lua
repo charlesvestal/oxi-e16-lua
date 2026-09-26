@@ -53,7 +53,7 @@ local SUF = {"", "m", "o", "+", "s2", "s4", "6", "m6", "7", "M7", "m7", "mM7", "
 
 local DT = 20.1            -- real update period: firmware fires after > 20 ms
 local FULL = 16383
-local C_ON, C_HIT = 0, 50  -- LED hue rotation (0-100)
+local C_ON, C_HIT = 0, 50  -- LED color: index into the app's 100-color palette
 local SETP = 12            -- settings page; pads are on pages 1-11
 local NN = "C C#D D#E F F#G G#A A#B "
 
