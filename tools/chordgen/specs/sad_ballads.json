@@ -1,0 +1,44 @@
+{
+  "name": "Sad Ballads",
+  "type": "functional",
+  "key": "Am",
+  "style": "rootless",
+  "reference": "sad_ballads",
+  "register": {
+    "bass": [
+      41,
+      53
+    ],
+    "top": [
+      67,
+      77
+    ]
+  },
+  "notes": "Minor-key Billboard progressions: i-bVImaj7-V7-i, bVI-bVII-i-iv, iv7-V7-i7-bVII, bVI-iv-V-i.",
+  "rows": [
+    [
+      "Am9",
+      "Fmaj7",
+      "E7",
+      "Am/G"
+    ],
+    [
+      "Fmaj9",
+      "G6",
+      "Am9",
+      "Dm9"
+    ],
+    [
+      "Dm7",
+      "E7b9",
+      "Am7",
+      "G"
+    ],
+    [
+      "Fmaj7",
+      "Dm9",
+      "E7sus4",
+      "Am11"
+    ]
+  ]
+}

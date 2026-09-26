@@ -1,0 +1,34 @@
+{
+  "name": "Pop Piano",
+  "type": "functional",
+  "key": "C",
+  "style": "close",
+  "reference": "pop_piano",
+  "notes": "Rows are common Billboard Hot 100 progressions (McGill Billboard, 1958-1991): I-vi-IV-V, vi-IV-V-I, the 70s IV-I/3-ii7-I walk, the 80s I-V/3-IV/3-V bass line.",
+  "rows": [
+    [
+      "C",
+      "Am",
+      "F",
+      "G"
+    ],
+    [
+      "Am",
+      "F",
+      "G",
+      "C"
+    ],
+    [
+      "F",
+      "C/E",
+      "Dm7",
+      "C"
+    ],
+    [
+      "C",
+      "G/B",
+      "F/A",
+      "G"
+    ]
+  ]
+}

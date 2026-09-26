@@ -159,7 +159,15 @@ The harness plays the sets in the browser (pads, rows, the whole grid, a random 
 each set's measurements next to the range of the current sets, and saves Keep / Fix / Drop
 verdicts and notes to `build/chordgen/feedback.json`. To put generated sets on the E16:
 
-    python3 tools/make_chords.py --dir build/chordgen/sets chords.lua neo_soul detroit impressionist
+    python3 tools/make_chords.py --dir build/chordgen/sets chords.lua cinematic chill_house \
+        gospel_soul neo_soul lofi_rb indie_jazz detroit lush_pads pop_piano impressionist sad_ballads
+
+Pop Piano, Gospel Soul and Sad Ballads take their rows from progressions that are common in
+the [McGill Billboard](https://ddmal.ca/research/The_McGill_Billboard_Project_(Chord_Analysis_Dataset)/)
+chord annotations (Hot 100 songs, 1958–1991; CC0). `tools/chordgen/billboard.py` downloads them
+into `build/` and lists the most common progressions (`--decade 1970`, `--minor`). The data is
+from John Ashley Burgoyne, Jonathan Wild and Ichiro Fujinaga, "An Expert Ground Truth Set for
+Audio Chord Recognition and Music Analysis", ISMIR 2011.
 
 ## Mod Seq
 

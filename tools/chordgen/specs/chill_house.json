@@ -1,0 +1,33 @@
+{
+  "name": "Chill House",
+  "type": "functional",
+  "key": "Gm",
+  "style": "rootless",
+  "reference": "chill_house",
+  "rows": [
+    [
+      "Gm9",
+      "Ebmaj9",
+      "Bbmaj9",
+      "F6"
+    ],
+    [
+      "Cm9",
+      "F9sus4",
+      "Bbmaj7",
+      "Ebmaj7#11"
+    ],
+    [
+      "Gm11",
+      "Dm7",
+      "Ebmaj9",
+      "Fadd9"
+    ],
+    [
+      "Ebmaj7#11",
+      "Dm11",
+      "Cm9",
+      "D7sus4"
+    ]
+  ]
+}

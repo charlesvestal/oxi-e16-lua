@@ -11,6 +11,8 @@ sys.path.insert(0, os.path.join(HERE, "..", ".."))
 import build  # noqa: E402
 import make_chords  # noqa: E402
 
+SPECS = sorted(f[:-5] for f in os.listdir(os.path.join(HERE, "..", "specs")) if f.endswith(".json"))
+
 
 class BuildTest(unittest.TestCase):
     @classmethod
@@ -24,13 +26,13 @@ class BuildTest(unittest.TestCase):
         cls.tmp.cleanup()
 
     def test_chords_files(self):
-        for slug in ("neo_soul", "detroit", "impressionist"):
+        for slug in SPECS:
             title, chords = make_chords.read(os.path.join(self.tmp.name, "sets", slug + ".chords"))
             self.assertEqual(sorted(chords), list(range(16)), slug)
 
     def test_data_sets(self):
         src = [s["source"] for s in self.data["sets"]]
-        self.assertEqual((src.count("generated"), src.count("reference")), (3, 11))
+        self.assertEqual((src.count("generated"), src.count("reference")), (len(SPECS), 11))
         s = next(s for s in self.data["sets"] if s["slug"] == "neo_soul")
         self.assertEqual(s["reference"], "neo_soul_minor")
         self.assertIn("ref_neo_soul_minor", [x["slug"] for x in self.data["sets"]])

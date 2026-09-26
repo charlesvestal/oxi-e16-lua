@@ -1,0 +1,33 @@
+{
+  "name": "Indie Jazz",
+  "type": "functional",
+  "key": "D",
+  "style": "rootless",
+  "reference": "indie_jazz",
+  "rows": [
+    [
+      "Dmaj9",
+      "Bm11",
+      "Em9",
+      "A13"
+    ],
+    [
+      "F#m7b5",
+      "B7b9",
+      "Em9",
+      "A13"
+    ],
+    [
+      "Gmaj7#11",
+      "F#m7",
+      "Bm9",
+      "E9"
+    ],
+    [
+      "Em11",
+      "Eb9",
+      "Dmaj9",
+      "D69"
+    ]
+  ]
+}

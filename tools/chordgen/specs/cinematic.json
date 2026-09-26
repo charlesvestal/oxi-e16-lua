@@ -1,0 +1,43 @@
+{
+  "name": "Cinematic",
+  "type": "functional",
+  "key": "Dm",
+  "style": "open",
+  "reference": "cinematic",
+  "register": {
+    "bass": [
+      36,
+      50
+    ],
+    "top": [
+      66,
+      78
+    ]
+  },
+  "rows": [
+    [
+      "Dm9",
+      "Bbmaj7#11",
+      "Fmaj9",
+      "C6"
+    ],
+    [
+      "Dm11",
+      "G6",
+      "Bbmaj9",
+      "Asus4"
+    ],
+    [
+      "Bbmaj7#11",
+      "Gm11",
+      "A7sus4",
+      "Dm69"
+    ],
+    [
+      "Fmaj7#11",
+      "Cadd9",
+      "Bbmaj9",
+      "A7b9"
+    ]
+  ]
+}

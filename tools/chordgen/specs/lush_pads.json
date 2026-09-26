@@ -1,0 +1,43 @@
+{
+  "name": "Lush Pads",
+  "type": "functional",
+  "key": "Ab",
+  "style": "open",
+  "reference": "lush_pads",
+  "register": {
+    "bass": [
+      40,
+      56
+    ],
+    "top": [
+      66,
+      80
+    ]
+  },
+  "rows": [
+    [
+      "Abadd9",
+      "Dbmaj7#11",
+      "Fm11",
+      "Eb6"
+    ],
+    [
+      "Cm7",
+      "Dbmaj9",
+      "Bbm11",
+      "Eb9sus4"
+    ],
+    [
+      "Fmadd9",
+      "Dbmaj7#11",
+      "Abmaj9/C",
+      "Ebsus4"
+    ],
+    [
+      "Gbmaj7#11",
+      "Abadd9",
+      "Bbm9",
+      "Dbmaj9"
+    ]
+  ]
+}

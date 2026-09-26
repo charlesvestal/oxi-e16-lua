@@ -1,0 +1,33 @@
+{
+  "name": "Lofi R&B",
+  "type": "functional",
+  "key": "Db",
+  "style": "rootless",
+  "reference": "lofi_rb_1",
+  "rows": [
+    [
+      "Gbmaj7",
+      "Fm7",
+      "Ebm9",
+      "Ab13"
+    ],
+    [
+      "Dbmaj9",
+      "Bbm9",
+      "Ebm9",
+      "Ab7sus4"
+    ],
+    [
+      "Bbm11",
+      "Gbmaj9",
+      "Fm7",
+      "Bbm9"
+    ],
+    [
+      "Gbmaj7",
+      "Gbm6",
+      "Fm7",
+      "Bb7b9"
+    ]
+  ]
+}
