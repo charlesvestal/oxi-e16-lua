@@ -7,7 +7,7 @@ ready-wired scene:
 |---|---|---|
 | `euclid.lua` | Euclid | 4-track Euclidean drum sequencer |
 | `lfo.lua` | LFOx16 | 16 LFOs, each on its own MIDI channel and CC, free or tempo-synced |
-| `chords.lua` | Chords | 176 hand-voiced chord pads on 11 pages |
+| `chords.lua` | Chords | 176 chord pads on 11 pages, in 11 moods |
 | `modseq.lua` | Mod Seq | 16-step CC modulation sequencer with glide |
 | `tb3po.lua` | TB-3PO | generative 303-style acid sequencer (port of the O&C / Phazerville applet, GPL-3.0) |
 
@@ -136,15 +136,9 @@ use a lowercase root: `f#11` = F#m11; `s` = sus, `a9` = add9, `h7` = half-dimini
 
 Push encoder 1 for all notes off.
 
-The default pages are Cinematic, Chill House, Gospel Soul, Neo Soul Minor, Lofi R&B 1, Indie
-Jazz, Detroit Techno, Lush Pads, Pop Piano, Impressionist and Sad Ballads, taking the
-first 16 chords of each. To choose other sets (about 150 are available), run:
-
-    python3 tools/make_chords.py chords.lua cinematic chill_house lofi_rb_2:16 indie_jazz ...
-
-`NAME:16` starts at chord 16. The chord sets come from
-[Impressive Chords](https://github.com/mestela/schwung-impressive-chords) by mestela, a
-module in the Schwung catalog.
+The pages are Cinematic, Chill House, Gospel Soul, Neo Soul, Lofi R&B, Indie Jazz, Detroit,
+Lush Pads, Pop Piano, Impressionist and Sad Ballads. They are written for this project (see
+below).
 
 ### Writing chord sets
 
@@ -283,7 +277,7 @@ then run the suites from the repo root:
 
     lua test/harness.lua euclid.lua
     lua test/lfo_test.lua
-    lua test/chords_test.lua     # after tools/make_chords.py (it caches the sets in build/)
+    lua test/chords_test.lua     # after python3 tools/chordgen/build.py (it builds the sets into build/)
     lua test/modseq_test.lua
     lua test/tb3po_test.lua
     lua test/fuzz.lua tb3po.lua 2 600    # random input for 10 simulated minutes (pages: 12 for chords)
@@ -312,5 +306,3 @@ MIT (see `LICENSE`), except `tb3po.lua`, which is GPL-3.0 (see `LICENSES/GPL-3.0
 ports the TB-3PO applet as modified in the GPL-3.0 Phazerville firmware. The original `TB3PO.h`
 is Copyright (c) 2020 Logarhythm under the MIT license, and its notice is kept in the file.
 
-The chord voicings in `chords.lua` come from the
-[Impressive Chords](https://github.com/mestela/schwung-impressive-chords) sets by mestela.

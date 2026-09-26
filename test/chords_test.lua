@@ -1,13 +1,13 @@
 -- Tests for chords.lua. Run from the repo root with a LUA_32BITS Lua, after
--- tools/make_chords.py has filled the data (it caches sets in build/chordsets):
+-- tools/chordgen/build.py has built the sets into build/chordgen/sets:
 --   lua test/chords_test.lua [SCRIPT DIR SET...]
 -- With arguments, SCRIPT is tested against the sets DIR/SET.chords, one per page.
 local E = dofile("test/e16mock.lua")
 local check = E.check
 
-local SCRIPT, DIR = arg[1] or "chords.lua", arg[2] or "build/chordsets"
-local SETS = {"cinematic", "chill_house", "gospel_soul", "neo_soul_minor", "lofi_rb_1",
-  "indie_jazz", "detroit_techno", "lush_pads", "pop_piano", "impressionist", "sad_ballads"}
+local SCRIPT, DIR = arg[1] or "chords.lua", arg[2] or "build/chordgen/sets"
+local SETS = {"cinematic", "chill_house", "gospel_soul", "neo_soul", "lofi_rb",
+  "indie_jazz", "detroit", "lush_pads", "pop_piano", "impressionist", "sad_ballads"}
 if arg[3] then SETS = {table.unpack(arg, 3)} end
 
 -- chord k (0-based) of a cached .chords file

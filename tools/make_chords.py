@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fill chords.lua with 11 pages of chords from Impressive Chords sets.
+"""Fill chords.lua with up to 11 pages of chord sets.
 
 Chord sets come from the Impressive Chords module for Schwung
 (github.com/mestela/schwung-impressive-chords, src/presets/chords/*.chords).
@@ -10,7 +10,9 @@ look them up. The data block in chords.lua (between the BEGIN/END markers) is
 rewritten in place.
 
 usage: make_chords.py [--dir DIR] chords.lua SET[:START] ... (up to 11 sets)
-With --dir, sets are read from DIR/SET.chords instead of Impressive Chords.
+With --dir, sets are read from DIR/SET.chords (the project's own sets are built into
+build/chordgen/sets by tools/chordgen/build.py). Without it, sets come from Impressive
+Chords, for local comparison only; don't publish those.
 """
 import os
 import re
