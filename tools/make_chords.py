@@ -9,7 +9,8 @@ chord 32. Chord names are worked out here, offline, so the script only has to
 look them up. The data block in chords.lua (between the BEGIN/END markers) is
 rewritten in place.
 
-usage: make_chords.py chords.lua SET[:START] ... (up to 11 sets)
+usage: make_chords.py [--dir DIR] chords.lua SET[:START] ... (up to 11 sets)
+With --dir, sets are read from DIR/SET.chords instead of Impressive Chords.
 """
 import os
 import re
@@ -55,13 +56,9 @@ def name_chord(notes):
     return (best[1], best[2]) if best else None
 
 
-def fetch(name):
-    os.makedirs(CACHE, exist_ok=True)
-    path = os.path.join(CACHE, name + ".chords")
-    if not os.path.exists(path):
-        with urllib.request.urlopen(RAW.format(name)) as r:
-            open(path, "wb").write(r.read())
-    title, chords = name, {}
+def read(path):
+    """Parse a .chords file: (title, {index: sorted notes})."""
+    title, chords = os.path.splitext(os.path.basename(path))[0], {}
     for line in open(path, encoding="utf-8"):
         m = re.match(r"\s*Name:\s*(.+)", line)
         if m:
@@ -72,6 +69,18 @@ def fetch(name):
     return title, chords
 
 
+def fetch(name, directory=None):
+    """A set by name: from DIRECTORY if given, else the Impressive Chords cache (downloading it once)."""
+    if directory:
+        return read(os.path.join(directory, name + ".chords"))
+    os.makedirs(CACHE, exist_ok=True)
+    path = os.path.join(CACHE, name + ".chords")
+    if not os.path.exists(path):
+        with urllib.request.urlopen(RAW.format(name)) as r:
+            open(path, "wb").write(r.read())
+    return read(path)
+
+
 def short(title):
     words = re.findall(r"[A-Za-z0-9]+", title)
     s = words[0][:4] if len(words) == 1 else "".join(w[:2] for w in words[:2])
@@ -79,13 +88,18 @@ def short(title):
 
 
 def main():
-    target, specs = sys.argv[1], sys.argv[2:]
+    args, directory = sys.argv[1:], None
+    if "--dir" in args:
+        i = args.index("--dir")
+        directory = args[i + 1]
+        del args[i:i + 2]
+    target, specs = args[0], args[1:]
     if not 1 <= len(specs) <= 11:
         sys.exit("give 1-11 chord sets")
     tokens, titles, pages, unnamed = [], [], [], 0
     for spec in specs:
         name, _, start = spec.partition(":")
-        title, chords = fetch(name)
+        title, chords = fetch(name, directory)
         start = int(start or 0)
         titles.append(title[:15])
         pages.append(short(title))

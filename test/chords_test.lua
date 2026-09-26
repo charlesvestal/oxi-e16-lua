@@ -1,15 +1,18 @@
 -- Tests for chords.lua. Run from the repo root with a LUA_32BITS Lua, after
 -- tools/make_chords.py has filled the data (it caches sets in build/chordsets):
---   lua test/chords_test.lua
+--   lua test/chords_test.lua [SCRIPT DIR SET...]
+-- With arguments, SCRIPT is tested against the sets DIR/SET.chords, one per page.
 local E = dofile("test/e16mock.lua")
 local check = E.check
 
+local SCRIPT, DIR = arg[1] or "chords.lua", arg[2] or "build/chordsets"
 local SETS = {"cinematic", "chill_house", "gospel_soul", "neo_soul_minor", "lofi_rb_1",
   "indie_jazz", "detroit_techno", "lush_pads", "pop_piano", "impressionist", "sad_ballads"}
+if arg[3] then SETS = {table.unpack(arg, 3)} end
 
 -- chord k (0-based) of a cached .chords file
 local function source(set, k)
-  for line in io.lines("build/chordsets/" .. set .. ".chords") do
+  for line in io.lines(DIR .. "/" .. set .. ".chords") do
     local i, notes = line:match("^%s*(%d+):%s*([%d,%s]+)")
     if i and tonumber(i) == k then
       local t = {}
@@ -18,6 +21,15 @@ local function source(set, k)
       return t
     end
   end
+end
+
+-- a set's title as chords.lua shows it (Name: line, 15 characters)
+local function title(set)
+  for line in io.lines(DIR .. "/" .. set .. ".chords") do
+    local t = line:match("^%s*Name:%s*(.-)%s*$")
+    if t then return t:sub(1, 15) end
+  end
+  return set:sub(1, 15)
 end
 
 local function pad(pg, i)
@@ -46,14 +58,14 @@ local function notes(list)
   return table.concat(t, ",")
 end
 
-E.load("chords.lua")
+E.load(SCRIPT)
 E.run(100)
 check(E.title == "Cinematic", "page 1 title is the set name (" .. E.title .. ")")
 check(E.labels[1] ~= nil and E.labels[16] ~= nil, "page 1 labels: " .. table.concat(E.labels, " ", 1, 16))
 
 -- every pad on every page plays exactly the source voicing
 local bad = 0
-for pg = 1, 11 do
+for pg = 1, #SETS do
   for i = 1, 16 do
     E.sent = {}
     pad(pg, i)
@@ -71,8 +83,10 @@ check(bad == 0, "all 176 pads play their source chord")
 
 -- labels fit and titles follow pages
 local titles = {}
-for pg = 1, 11 do E.show(pg); E.run(60); titles[#titles + 1] = E.title end
-check(titles[3] == "Gospel Soul" and titles[11] == "Sad Ballads", "titles per page: " .. table.concat(titles, ", "))
+for pg = 1, #SETS do E.show(pg); E.run(60); titles[#titles + 1] = E.title end
+local want = {}
+for pg = 1, #SETS do want[pg] = title(SETS[pg]) end
+check(table.concat(titles, ",") == table.concat(want, ","), "titles per page: " .. table.concat(titles, ", "))
 E.show(1); E.run(60)
 
 -- hold: a new pad releases the previous chord first
@@ -157,7 +171,7 @@ set(7, -1)
 
 -- persistence
 set(3, -20)
-E.load("chords.lua")
+E.load(SCRIPT)
 E.show(12)
 check(E.labels[3] == "V80", "settings persist across reload (" .. E.labels[3] .. ")")
 
