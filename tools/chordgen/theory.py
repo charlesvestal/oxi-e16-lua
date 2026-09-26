@@ -1,6 +1,5 @@
 """Music theory for the chord-set tools: chord symbols, device labels, keys,
 scales, voice leading and the low-interval ("mud") rule."""
-import itertools
 import os
 import statistics as st
 import sys
@@ -19,17 +18,16 @@ QUALITY = {
     "7": (0, 4, 7, 10), "maj7": (0, 4, 7, 11), "m7": (0, 3, 7, 10), "mmaj7": (0, 3, 7, 11),
     "m7b5": (0, 3, 6, 10), "dim7": (0, 3, 6, 9), "7sus4": (0, 5, 7, 10),
     "9": (0, 4, 7, 10, 14), "maj9": (0, 4, 7, 11, 14), "m9": (0, 3, 7, 10, 14),
-    "9sus4": (0, 5, 7, 10, 14), "mmaj9": (0, 3, 7, 11, 14),
+    "9sus4": (0, 5, 7, 10, 14),
     "11": (0, 7, 10, 14, 17), "m11": (0, 3, 7, 10, 14, 17),
-    "maj7#11": (0, 4, 7, 11, 18), "maj9#11": (0, 4, 7, 11, 14, 18),
+    "maj7#11": (0, 4, 7, 11, 18),
     "13": (0, 4, 7, 10, 14, 21), "m13": (0, 3, 7, 10, 14, 21), "maj13": (0, 4, 7, 11, 14, 21),
-    "13sus4": (0, 5, 7, 10, 14, 21),
-    "7b9": (0, 4, 7, 10, 13), "7#9": (0, 4, 7, 10, 15), "7#11": (0, 4, 7, 10, 18),
-    "7b13": (0, 4, 7, 10, 20), "m7b9": (0, 3, 7, 10, 13),
+    "7b9": (0, 4, 7, 10, 13), "7#9": (0, 4, 7, 10, 15),
+    "m7b9": (0, 3, 7, 10, 13),
 }
 ALIAS = {"M7": "maj7", "M9": "maj9", "M13": "maj13", "M7#11": "maj7#11", "M9#11": "maj9#11",
          "min": "m", "-": "m", "sus": "sus4", "7sus": "7sus4", "9sus": "9sus4",
-         "o": "dim", "o7": "dim7", "h7": "m7b5", "+": "aug", "mM7": "mmaj7", "mM9": "mmaj9"}
+         "o": "dim", "o7": "dim7", "h7": "m7b5", "+": "aug", "mM7": "mmaj7"}
 
 # Krumhansl-Kessler key profiles (C major, C minor)
 MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
@@ -40,8 +38,11 @@ def pc(name):
     """Pitch class of a note name: C, F#, Bb."""
     if not name or name[0] not in LETTER:
         raise ValueError(f"bad note name {name!r}")
+    accs = name[1:]
+    if "#" in accs and "b" in accs:
+        raise ValueError(f"bad note name {name!r}")
     p = LETTER[name[0]]
-    for a in name[1:]:
+    for a in accs:
         if a == "#":
             p += 1
         elif a == "b":
@@ -53,7 +54,9 @@ def pc(name):
 
 def parse(symbol):
     """'Ebm9' -> (root pc, intervals, slash bass pc or None, quality name)."""
-    body, _, bass = symbol.partition("/")
+    body, sep, bass = symbol.partition("/")
+    if sep and not bass:
+        raise ValueError(f"bad chord symbol {symbol!r}")
     i = 1
     while i < len(body) and body[i] in "#b":
         i += 1
@@ -76,7 +79,11 @@ def pcs(symbol):
 
 
 def label(notes):
-    """The pad label chords.lua shows for these notes (untransposed)."""
+    """The pad label chords.lua shows for these notes (untransposed).
+    chords.lua drops notes outside 22..115 before naming."""
+    notes = [n for n in notes if 22 <= n <= 115]
+    if not notes:
+        return ""
     nm = make_chords.name_chord(notes)
     if nm is None:
         return NAMES[min(notes) % 12] + "?"
@@ -90,14 +97,24 @@ def vl(a, b):
     """Voice-leading distance: total semitones moved, pairing voices in order;
     voices without a partner move to the nearest note of the other chord."""
     a, b = sorted(a), sorted(b)
+    if len(a) == len(b):
+        return sum(abs(x - y) for x, y in zip(a, b))
     if len(a) > len(b):
         a, b = b, a
-    best = None
-    for combo in itertools.combinations(range(len(b)), len(a)):
-        cost = sum(abs(a[i] - b[j]) for i, j in enumerate(combo))
-        cost += sum(min(abs(b[j] - x) for x in a) for j in range(len(b)) if j not in combo)
-        best = cost if best is None else min(best, cost)
-    return best
+    n, m = len(a), len(b)
+    nearest = [min(abs(b[j] - x) for x in a) for j in range(m)]
+    inf = float("inf")
+    dp = [[inf] * (m + 1) for _ in range(n + 1)]
+    dp[0][0] = 0
+    for j in range(1, m + 1):
+        dp[0][j] = dp[0][j - 1] + nearest[j - 1]
+    for i in range(1, n + 1):
+        for j in range(i, m + 1):
+            best = dp[i - 1][j - 1] + abs(a[i - 1] - b[j - 1])
+            if j > i:
+                best = min(best, dp[i][j - 1] + nearest[j - 1])
+            dp[i][j] = best
+    return dp[n][m]
 
 
 def mud(notes):

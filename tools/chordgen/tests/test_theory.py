@@ -1,9 +1,27 @@
+import itertools
 import os
+import random
+import re
 import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import theory  # noqa: E402
+
+
+def _vl_brute_force(a, b):
+    """Old brute-force reference: total semitones moved, pairing voices in
+    order; voices without a partner move to the nearest note of the other
+    chord."""
+    a, b = sorted(a), sorted(b)
+    if len(a) > len(b):
+        a, b = b, a
+    best = None
+    for combo in itertools.combinations(range(len(b)), len(a)):
+        cost = sum(abs(a[i] - b[j]) for i, j in enumerate(combo))
+        cost += sum(min(abs(b[j] - x) for x in a) for j in range(len(b)) if j not in combo)
+        best = cost if best is None else min(best, cost)
+    return best
 
 
 class ParseTest(unittest.TestCase):
@@ -31,6 +49,14 @@ class ParseTest(unittest.TestCase):
     def test_pcs_include_slash_bass(self):
         self.assertEqual(theory.pcs("C/Bb"), {0, 4, 7, 10})
 
+    def test_empty_slash_bass_is_an_error(self):
+        with self.assertRaisesRegex(ValueError, re.escape("C/")):
+            theory.parse("C/")
+
+    def test_mixed_accidentals_are_an_error(self):
+        with self.assertRaisesRegex(ValueError, re.escape("C#b")):
+            theory.parse("C#b")
+
 
 class LabelTest(unittest.TestCase):
     def test_minor_is_lowercase(self):
@@ -45,6 +71,18 @@ class LabelTest(unittest.TestCase):
     def test_four_characters(self):
         self.assertLessEqual(len(theory.label([48, 64, 67, 71, 78])), 4)
 
+    def test_drops_notes_outside_22_115(self):
+        self.assertEqual(theory.label([10, 48, 64, 67, 71, 200]), "CM7")
+
+    def test_empty_when_nothing_in_range(self):
+        self.assertEqual(theory.label([10, 200]), "")
+
+    def test_all_qualities_are_nameable(self):
+        for name, ivs in theory.QUALITY.items():
+            notes = [48 + i for i in ivs]
+            lbl = theory.label(notes)
+            self.assertFalse(lbl.endswith("?"), f"quality {name!r} -> {lbl!r}")
+
 
 class ToolsTest(unittest.TestCase):
     def test_vl_pairs_voices(self):
@@ -52,6 +90,14 @@ class ToolsTest(unittest.TestCase):
 
     def test_vl_extra_voice_goes_to_nearest(self):
         self.assertEqual(theory.vl([60, 64, 67], [60, 64, 67, 70]), 3)
+
+    def test_vl_matches_brute_force(self):
+        rng = random.Random(20260926)
+        for _ in range(300):
+            na, nb = rng.randint(1, 7), rng.randint(1, 7)
+            a = [rng.randint(30, 90) for _ in range(na)]
+            b = [rng.randint(30, 90) for _ in range(nb)]
+            self.assertEqual(theory.vl(a, b), _vl_brute_force(a, b), (a, b))
 
     def test_mud(self):
         self.assertEqual(theory.mud([40, 43, 47]), 2)      # 40-43 and 43-47 under a 4th below A2
