@@ -4,7 +4,7 @@
   {
    "id": 0,
    "subject": "Task 1: `make_chords.py --dir` and a configurable `chords_te",
-   "status": "pending",
+   "status": "completed",
    "description": "**Goal:** Generated `.chords` files can be packed into a copy of `chords.lua` and tested with the existing suite.\n\n**Files:**\n- Modify: `tools/make_chords.py` (`fetch`, `main`)\n- Modify: `test/chords_test.lua` (header, `SETS`, `source`, `E.load`, title check)\n- Create: `tools/chordgen/tests/test_make_chords.py`\n\n**Acceptance Criteria:**\n- [ ] `make_chords.read(path)` returns `(title, {index: sorted notes})` for a `.chords` file\n- [ ] `python3 tools/make_chords.py --dir DIR TARGET NAME...` reads `DIR/NAME.chords` and never downloads\n- [ ] `$LUA test/chords_test.lua` (no args) still prints `ALL PASSED`\n- [ ] `$LUA test/chords_test.lua SCRIPT DIR NAME...` tests SCRIPT against DIR's sets, with titles from their `Name:` lines\n\n**Verify:** `python3 -m unittest discover -s tools/chordgen/tests -t tools/chordgen -p 'test_make_chords.py' -v` \u2192 OK; `$LUA test/chords_test.lua | tail -1` \u2192 `ALL PASSED`\n\nFull steps and code: docs/superpowers/plans/2026-09-26-chord-sets.md, section \"Task 1: `make_chords.py --dir` and a configurable `chords_test.lua`\".\n\n```json:metadata\n{\"files\": [\"tools/make_chords.py\", \"test/chords_test.lua\", \"tools/chordgen/tests/test_make_chords.py\"], \"verifyCommand\": \"`python3 -m unittest discover -s tools/chordgen/tests -t tools/chordgen -p 'test_make_chords.py' -v` \\u2192 OK; `$LUA test/chords_test.lua | tail -1` \\u2192 `ALL PASSED`\", \"acceptanceCriteria\": [\"`make_chords.read(path)` returns `(title, {index: sorted notes})` for a `.chords` file\", \"`python3 tools/make_chords.py --dir DIR TARGET NAME...` reads `DIR/NAME.chords` and never downloads\", \"`$LUA test/chords_test.lua` (no args) still prints `ALL PASSED`\", \"`$LUA test/chords_test.lua SCRIPT DIR NAME...` tests SCRIPT against DIR's sets, with titles from their `Name:` lines\"], \"modelTier\": \"standard\"}\n```"
   },
   {
@@ -71,5 +71,5 @@
    ]
   }
  ],
- "lastUpdated": "2026-09-26T12:22:29"
+ "lastUpdated": "2026-09-26T12:27:09"
 }
