@@ -33,8 +33,10 @@ local ok, err = pcall(function()
     local dt = math.random(0, 300)
     E.run(dt)
     t = t + dt
-    -- scripts that catch their own errors show "ERR" in the header instead of raising
-    if E.title == "ERR" then error("script reported an error: " .. table.concat(E.labels, "", 9, 16)) end
+    -- scripts that catch their own errors show "ERR" (maybe with the message) in the header instead of raising
+    if E.title:sub(1, 3) == "ERR" then
+      error("script reported an error: " .. E.title .. " " .. table.concat(E.labels, "", 9, 16))
+    end
   end
 end)
 print(("%-12s %s"):format(script, ok and ("ok, " .. #E.sent .. " messages, update still running: " .. tostring(E.rate > 0)) or ("ERROR: " .. err)))

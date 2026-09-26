@@ -95,10 +95,12 @@ A modulation bank for several synths: 16 LFOs, each with its own MIDI channel an
 | push | on/off | **Sync/Free** | freeze | **Dest** |
 
 - **Rate** is free (20 s … 6.4 Hz) or **synced** to the tempo (8 bars … 1/32, with triplets).
+  Free rates below 1 Hz show their period (`2.5s`), faster ones their frequency (`1.0H` = 1 Hz).
   Pushing Rate toggles between them and keeps about the same speed. Synced LFOs follow one
   beat counter, so they stay locked together.
 - **Dest** switches the row's first two encoders to that LFO's **MIDI channel** and **CC
-  number** (labels `Ch3`, `CC74`). Push again to go back.
+  number** (labels `Ch3`, `CC74`). Push again to go back. The CC it leaves behind is sent the
+  center value, and so is the old port when the output changes.
 - The Center ring shows the live output. An LFO that is off sends its center value when it's
   switched off or its Center is turned, so it works as a plain CC knob. The header shows the page's
   LFOs and how many are running in total (`LFO 1-4 3on`).
@@ -110,8 +112,9 @@ A modulation bank for several synths: 16 LFOs, each with its own MIDI channel an
 
 By default only LFO 1 runs. Each page starts on its own MIDI channel (page 1 = channel 1 …), with
 the rows on CC 74, 71, 1 and 10, so a page is effectively one synth. There's no MIDI clock
-input for Lua (firmware 1.2), so synced rates follow the BPM setting; a future clock callback
-would only need to drive the beat counter.
+input for Lua (firmware 1.2), so synced rates follow the BPM setting.
+Over a long set they drift from other gear; push **Restart all** on a downbeat to realign. A
+future clock callback would only need to drive the beat counter.
 
 ## Chords
 

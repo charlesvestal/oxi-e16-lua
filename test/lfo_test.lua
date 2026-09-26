@@ -44,7 +44,7 @@ check(#ccs(1, 74) > 20 and others == 0, "only LFO 1 sends (ch1 CC74: " .. #ccs(1
 for _ = 1, 90 do turn(1, 2, -1) end
 check(E.labels[2] == "20s", "slowest rate 20s (" .. E.labels[2] .. ")")
 for _ = 1, 90 do turn(1, 2, 1) end
-check(E.labels[2] == "6.4", "fastest rate 6.4 (" .. E.labels[2] .. ")")
+check(E.labels[2] == "6.4H", "fastest rate 6.4H (" .. E.labels[2] .. ")")
 for _ = 1, 48 do turn(1, 2, -1) end          -- back to 36 (0.4 Hz)
 check(E.labels[2] == "2.5s", "rate back to 0.4 Hz (2.5s)")
 
@@ -54,6 +54,13 @@ check(E.labels[1] == "Ch1" and E.labels[2] == "CC74", "Dest view: " .. row(1))
 for _ = 1, 2 do turn(1, 1, 1) end
 for _ = 1, 6 do turn(1, 2, -9) end           -- 74 - 54 = 20
 check(E.labels[1] == "Ch3" and E.labels[2] == "CC20", "channel 3, CC 20: " .. row(1))
+
+-- every destination left behind is back at the center value (64), last
+local left = {}
+for _, m in ipairs(E.sent) do left[m.st * 128 + m.d1] = m.d2 end
+local stray = 0
+for k, v in pairs(left) do if k ~= (0xB0 + 2) * 128 + 20 and v ~= 64 then stray = stray + 1 end end
+check(stray == 0, "old destinations are left at the center (" .. stray .. " stray)")
 E.sent = {}
 E.run(1500)
 check(#ccs(3, 20) > 5 and #ccs(1, 74) == 0, "LFO 1 now sends ch3 CC20")
@@ -95,6 +102,19 @@ check(same, "two synced LFOs stay locked together")
 
 -- BPM on the settings page drives synced rates
 check(E.labels[1] == "All" and E.labels[2] == "120" and E.labels[3] == "Stop", "settings labels: " .. table.concat(E.labels, " ", 1, 3))
+
+-- changing the port leaves the old one at the centers, then continues on the new one
+E.sent = {}
+turn(5, 33, 1)
+E.run(200)
+local old, new = {}, 0
+for _, m in ipairs(E.sent) do
+  if m.out == 0 then old[#old + 1] = m.d2 elseif m.out == 1 then new = new + 1 end
+end
+check(#old == 3 and old[1] == 64 and old[2] == 64 and old[3] == 64 and new >= 3,
+  "port change: 3 centers on the old port, then the new one (" .. #old .. " old, " .. new .. " new)")
+check(E.labels[1] == "O1", "output O1 (" .. E.labels[1] .. ")")
+turn(5, 33, -1)
 for _ = 1, 15 do turn(5, 34, -4) end         -- 120 -> 60
 check(E.labels[2] == "60", "BPM 60 (" .. E.labels[2] .. ")")
 E.sent = {}
@@ -105,7 +125,7 @@ check(peaks(a) >= 3 and peaks(a) <= 5, "1/4 at 60 BPM: about 4 cycles in 4 s (" 
 -- toggling back to free keeps about the same speed (1 Hz at 60 BPM)
 show(1)
 press(1, 18)
-check(E.labels[2] == "1.0", "back to free at the same speed (" .. E.labels[2] .. ")")
+check(E.labels[2] == "1.0H", "back to free at the same speed (" .. E.labels[2] .. ")")
 
 -- freeze, all off
 press(1, 19)
@@ -127,7 +147,7 @@ E.run(100)
 press(1, 20)
 check(E.labels[1] == "Ch3" and E.labels[2] == "CC20", "channel/CC persist across reload: " .. row(1))
 press(1, 20)
-check(E.labels[2] == "1.0" and E.labels[6] == "1/4", "free and synced rates persist: " .. E.labels[2] .. " " .. E.labels[6])
+check(E.labels[2] == "1.0H" and E.labels[6] == "1/4", "free and synced rates persist: " .. E.labels[2] .. " " .. E.labels[6])
 local nv = 0
 for _ in pairs(E.store) do nv = nv + 1 end
 check(nv == 26, "uses 26 scene variables (" .. nv .. ")")
@@ -145,6 +165,18 @@ local before = E.store.a1
 turn(1, 1, 0)
 controller.onEncoderTurn{id = 255, index = 1, page = 1, increment = 1, value = 0, scaled = 0, is_held = false}
 check(E.store.a1 == before, "ignores increment 0 and id 255")
+
+-- S&H starts on a random value, not the center, when switched on
+local sh = 0
+for seed = 1, 20 do
+  math.randomseed(seed)
+  E.sent = {}
+  press(1, 29)                               -- LFO 4 (S&H, ch1 CC10) on
+  E.run(60)
+  if (ccs(1, 10)[1] or 64) ~= 64 then sh = sh + 1 end
+  press(1, 29)
+end
+check(sh >= 18, "S&H starts off-center (" .. sh .. " of 20)")
 
 -- no allocation while running (mock recording off while measuring; the harness
 -- itself leaves a one-off ~250 B that doesn't grow with time)

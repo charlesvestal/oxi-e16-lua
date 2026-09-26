@@ -4,11 +4,13 @@
 -- Pages 1-4: four LFOs per page, one per row (page 1 = LFO 1-4 ... page 4 = LFO 13-16).
 --   turn:  Shape (Sin Tri SawU SawD Sqr S&H) | Rate | Depth -100..+100 % | Center 0-127
 --   push:  on/off | Sync/Free | freeze | Dest
---   Rate is free (20 s .. 6.4 Hz) or synced to the tempo (8 bars .. 1/32, with
---   triplets); pushing Rate toggles, keeping about the same speed. Synced LFOs
---   follow one beat counter, so they stay locked together.
+--   Rate is free (20 s .. 6.4 Hz; labels "2.5s" = period, "1.0H" = Hz) or synced
+--   to the tempo (8 bars .. 1/32, with triplets); pushing Rate toggles, keeping
+--   about the same speed. Synced LFOs follow one beat counter, so they stay
+--   locked together.
 --   Dest flips the row's first two encoders to its MIDI channel and CC number
---   (labels "Ch3", "CC74"); push it again to go back.
+--   (labels "Ch3", "CC74"); push it again to go back. A destination (or output
+--   port) left behind is sent the center value.
 --   The Center ring shows the live output. An LFO that is off sends its center
 --   value when it is switched off or its Center is turned (a plain CC knob).
 -- Page 5, settings: 1 output port (0 = all), push = restart all (realigns synced
@@ -79,7 +81,7 @@ for t = 1, N do
   local r = (t - 1) % 4 + 1
   SH[t], RT[t], DP[t], CT[t] = DSH[r], DRT[r], 50, 64
   CC[t], CH[t], ON[t] = DCC[r], (t + 3) // 4, t == 1 and 1 or 0
-  FZ[t], DV[t], PH[t], RND[t], LAST[t] = 0, 0, 0, 0, -1
+  FZ[t], DV[t], PH[t], RND[t], LAST[t] = 0, 0, 0, math.random() * 2 - 1, -1
 end
 local out, bpm, beat = 0, 120, 0   -- output port, tempo, beats since restart (mod 32)
 local title, shown
@@ -144,7 +146,7 @@ local function draw(t, full, pg)
       local h = hz(t)
       local x = math.floor((h >= 1 and h or 1 / h) * 10 + 0.5)   -- tenths of Hz or s
       set(b + 2, r * FULL // 84, c)
-      lab(b + 2, h < 1 and x >= 100 and (x + 5) // 10 .. "s" or x // 10 .. "." .. x % 10 .. (h < 1 and "s" or ""))
+      lab(b + 2, h < 1 and x >= 100 and (x + 5) // 10 .. "s" or x // 10 .. "." .. x % 10 .. (h < 1 and "s" or "H"))
     end
   end
   set(b + 3, math.abs(d) * FULL // 100, c)
@@ -215,8 +217,14 @@ function controller.onEncoderTurn(e)
   local s = d > 0 and 1 or -1
   if id > 32 then
     if id == 33 then
-      out = clamp(out + s, 0, 15)
-      for t = 1, N do LAST[t] = -1 end  -- resend everything to the new port
+      local o = clamp(out + s, 0, 15)
+      if o ~= out then
+        for t = 1, N do
+          if ON[t] > 0 then send(t, CT[t]) end   -- leave the old port at the centers
+          LAST[t] = -1                  -- and resend everything to the new one
+        end
+        out = o
+      end
     else
       bpm = clamp(bpm + d, 20, 300)
     end
@@ -225,6 +233,7 @@ function controller.onEncoderTurn(e)
     return
   end
   local t, k = e.page * 4 - 4 + (id + 3) // 4, (id - 1) % 4 + 1
+  local ch, cc = CH[t], CC[t]
   if k == 1 then
     if DV[t] > 0 then CH[t] = clamp(CH[t] + s, 1, 16) else SH[t] = clamp(SH[t] + s, 1, 6) end
   elseif k == 2 then
@@ -236,7 +245,10 @@ function controller.onEncoderTurn(e)
   else
     CT[t] = clamp(CT[t] + d, 0, 127)
   end
-  if DV[t] > 0 and k <= 2 then LAST[t] = -1 end   -- new destination: resend
+  if ch ~= CH[t] or cc ~= CC[t] then  -- new destination: old one back to center, resend
+    midi.sendCC(out, ch - 1, cc, CT[t])
+    LAST[t] = -1
+  end
   save(t)
   if ON[t] == 0 and k == 4 then send(t, CT[t]) end
   draw(t, true, e.page)
@@ -275,6 +287,7 @@ function controller.onEncoderPress(e)
     local t, k = e.page * 4 - 4 + (id - 13) // 4, (id - 17) % 4 + 1
     if k == 1 then
       ON[t] = 1 - ON[t]
+      RND[t] = math.random() * 2 - 1    -- S&H starts on a fresh value
       save(t)
       send(t, value(t))                 -- off: back to the center value
     elseif k == 2 then
