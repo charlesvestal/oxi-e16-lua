@@ -146,6 +146,21 @@ first 16 chords of each. To choose other sets (about 150 are available), run:
 [Impressive Chords](https://github.com/mestela/schwung-impressive-chords) by mestela, a
 module in the Schwung catalog.
 
+### Writing chord sets
+
+New sets are written as specs in `tools/chordgen/specs/` (a key, a set type, 16 chord
+symbols in 4 rows, a voicing style) and voiced by `tools/chordgen/voicer.py`, which keeps
+the set in one register, avoids muddy low intervals and moves smoothly from pad to pad.
+
+    python3 tools/chordgen/build.py      # voice the specs, measure them
+    python3 tools/chordgen/serve.py      # then open http://localhost:8016/
+
+The harness plays the sets in the browser (pads, rows, the whole grid, a random walk), shows
+each set's measurements next to the range of the current sets, and saves Keep / Fix / Drop
+verdicts and notes to `build/chordgen/feedback.json`. To put generated sets on the E16:
+
+    python3 tools/make_chords.py --dir build/chordgen/sets chords.lua neo_soul detroit impressionist
+
 ## Mod Seq
 
 **Page 1:** one step per encoder. Turn sets the step's CC value; push toggles **glide**
@@ -264,6 +279,7 @@ then run the suites from the repo root:
     lua test/modseq_test.lua
     lua test/tb3po_test.lua
     lua test/fuzz.lua tb3po.lua 2 600    # random input for 10 simulated minutes (pages: 12 for chords)
+    python3 -m unittest discover -s tools/chordgen/tests -t tools/chordgen   # chord-set tools
 
 `test/fuzz.lua` matters on the E16: an error in `update()` silently stops a script's updates, so
 the fuzzer throws random presses, turns, page changes and variable edits at a script and fails if
