@@ -24,10 +24,10 @@ REFERENCE = ["cinematic", "chill_house", "gospel_soul", "neo_soul_minor", "lofi_
 REFERENCE_TYPE = {"detroit_techno": "shape", "impressionist": "pedal"}   # the rest: functional
 
 
-def entry(name, slug, typ, source, ref, symbols, chords):
+def entry(name, slug, typ, source, ref, symbols, chords, spec_key=None):
     return {"name": name, "slug": slug, "type": typ, "source": source, "reference": ref,
             "pads": [{"symbol": s, "notes": c, "label": label(c)} for s, c in zip(symbols, chords)],
-            "metrics": metrics(chords)}
+            "metrics": metrics(chords, spec_key)}
 
 
 def build(out, specs_dir=os.path.join(HERE, "specs"), reference=True):
@@ -42,7 +42,7 @@ def build(out, specs_dir=os.path.join(HERE, "specs"), reference=True):
             for i, c in enumerate(chords):
                 f.write(f"{i}: {','.join(map(str, c))}\n")
         sets.append(entry(spec["name"], slug, spec["type"], "generated", spec.get("reference"),
-                          [s for r in spec["rows"] for s in r], chords))
+                          [s for r in spec["rows"] for s in r], chords, spec.get("key")))
     refs = []
     if reference:
         for slug in REFERENCE:

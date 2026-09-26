@@ -2,7 +2,7 @@
 leading, mud), and reference ranges across sets."""
 import statistics as st
 
-from theory import NAMES, key, label, mud, scale, vl
+from theory import NAMES, key, label, mud, pc, scale, vl
 
 # numeric metrics, in the order the harness shows them
 METRICS = ["diatonic", "shapes", "voices_min", "voices_max", "bass_lo", "bass_hi",
@@ -10,10 +10,15 @@ METRICS = ["diatonic", "shapes", "voices_min", "voices_max", "bass_lo", "bass_hi
            "mud", "unnamed"]
 
 
-def metrics(chords):
-    """chords: 16 note lists in pad order (row by row)."""
+def metrics(chords, spec_key=None):
+    """chords: 16 note lists in pad order (row by row). With the spec's key
+    ("Ebm"), diatonic counts against it instead of the estimated key."""
     fit, k, q = key(chords)
-    sc = scale(k, q)
+    if spec_key:
+        sk, sq = spec_key.rstrip("m"), "m" if spec_key.endswith("m") else ""
+        sc = scale(pc(sk), sq)
+    else:
+        sc = scale(k, q)
     bass = [min(c) for c in chords]
     top = [max(c) for c in chords]
     moves = [vl(a, b) for a, b in zip(chords, chords[1:])]

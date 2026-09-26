@@ -121,12 +121,13 @@ function voiceEP(n, t, amp) {
   mg.gain.setValueAtTime(hz(n) * 2.2, t);
   mg.gain.exponentialRampToValueAtTime(hz(n) * 0.15, t + 1.2);
   mod.connect(mg).connect(car.frequency);
+  g.gain.value = 0.0001;
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(amp, t + 0.005);
   g.gain.exponentialRampToValueAtTime(amp * 0.25, t + 2.5);
   car.connect(g).connect(master);
   car.start(t); mod.start(t);
-  return {g, oscs: [car, mod], rel: 0.35};
+  return {g, oscs: [car, mod], rel: 0.35, t0: t};
 }
 function voicePad(n, t, amp) {
   const f = ctx.createBiquadFilter(), g = ctx.createGain();
@@ -137,12 +138,14 @@ function voicePad(n, t, amp) {
     o.connect(f); o.start(t);
     return o;
   });
+  g.gain.value = 0.0001;
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(amp * 0.6, t + 0.4);
   f.connect(g).connect(master);
-  return {g, oscs, rel: 1.2};
+  return {g, oscs, rel: 1.2, t0: t};
 }
 function release(v, t) {
+  if (t < v.t0) { v.oscs.forEach((o) => o.stop(v.t0)); return; }   // not started yet
   v.g.gain.cancelScheduledValues(t);
   v.g.gain.setValueAtTime(Math.max(v.g.gain.value, 0.0001), t);
   v.g.gain.exponentialRampToValueAtTime(0.0001, t + v.rel);
@@ -170,7 +173,6 @@ function playPad(i) {
   sounding.push(s);
   const pad = $("grid").children[i];
   pad.classList.add("lit");
-  select(i);
   const gate = +$("gate").value;
   if (gate > 0) {
     setTimeout(() => {
@@ -201,7 +203,7 @@ function walk() {
     let j = i;
     while (j === i) j = Math.floor(Math.random() * 16);
     i = j;
-    timers.push(setTimeout(tick, step()));
+    timers = [setTimeout(tick, step())];
   };
   tick();
 }
@@ -227,7 +229,7 @@ function show(set) {
     d.querySelector(".lab").textContent = p.label;
     d.querySelector(".sym").textContent = set.source === "generated" ? p.symbol : p.notes.join(" ");
     d.title = p.notes.join(" ");
-    d.onclick = () => playPad(i);
+    d.onclick = () => { playPad(i); select(i); };
     $("grid").appendChild(d);
   });
   const m = set.metrics;
@@ -275,7 +277,7 @@ $("all").onclick = () => sequence([...Array(16).keys()]);
 $("walk").onclick = walk;
 $("stop").onclick = stop;
 $("tone").onclick = () => { tone = tone === "ep" ? "pad" : "ep"; $("tone").textContent = tone === "ep" ? "E-piano" : "Pad"; };
-$("set").onchange = () => { back = null; show(data.sets.find((s) => s.slug === $("set").value)); };
+$("set").onchange = () => { $("set").blur(); back = null; show(data.sets.find((s) => s.slug === $("set").value)); };
 $("ref").onclick = () => {
   if (back) { const b = back; back = null; show(b); return; }
   const r = data.sets.find((s) => s.slug === "ref_" + cur.reference);
@@ -294,9 +296,9 @@ $("padnote").oninput = () => {
   save();
 };
 document.addEventListener("keydown", (e) => {
-  if (e.target.matches("input, textarea")) return;
+  if (e.target.matches("input, textarea, select") || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = "1234qwerasdfzxcv".indexOf(e.key.toLowerCase());
-  if (k >= 0) playPad(k);
+  if (k >= 0) { playPad(k); select(k); }
   if (e.key === " ") { e.preventDefault(); stop(); }
 });
 

@@ -31,6 +31,13 @@ class ReferenceTest(unittest.TestCase):
             self.assertIn(k, m)
 
 
+class SpecKeyTest(unittest.TestCase):
+    def test_diatonic_uses_the_spec_key(self):
+        chords = [[51, 58, 61, 66]] * 16                 # Ebm7: diatonic in Eb minor, not in E major
+        self.assertEqual(analyze.metrics(chords, "Ebm")["diatonic"], 16)
+        self.assertEqual(analyze.metrics(chords, "E")["diatonic"], 0)
+
+
 class RangesTest(unittest.TestCase):
     def test_min_median_max(self):
         ms = [dict.fromkeys(analyze.METRICS, v) for v in (1, 2, 10)]
