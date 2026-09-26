@@ -60,7 +60,7 @@ end
 
 E.load(SCRIPT)
 E.run(100)
-check(E.title == "Cinematic", "page 1 title is the set name (" .. E.title .. ")")
+check(E.title == title(SETS[1]), "page 1 title is the set name (" .. E.title .. ")")
 check(E.labels[1] ~= nil and E.labels[16] ~= nil, "page 1 labels: " .. table.concat(E.labels, " ", 1, 16))
 
 -- every pad on every page plays exactly the source voicing
@@ -79,7 +79,7 @@ for pg = 1, #SETS do
     pad(pg, i)                        -- Hold (default): same pad again stops
   end
 end
-check(bad == 0, "all 176 pads play their source chord")
+check(bad == 0, ("all %d pads play their source chord"):format(16 * #SETS))
 
 -- labels fit and titles follow pages
 local titles = {}

@@ -71,7 +71,7 @@ def read(path):
 
 def fetch(name, directory=None):
     """A set by name: from DIRECTORY if given, else the Impressive Chords cache (downloading it once)."""
-    if directory:
+    if directory is not None:
         return read(os.path.join(directory, name + ".chords"))
     os.makedirs(CACHE, exist_ok=True)
     path = os.path.join(CACHE, name + ".chords")
@@ -91,6 +91,8 @@ def main():
     args, directory = sys.argv[1:], None
     if "--dir" in args:
         i = args.index("--dir")
+        if i + 1 >= len(args):
+            sys.exit("--dir needs a directory")
         directory = args[i + 1]
         del args[i:i + 2]
     target, specs = args[0], args[1:]
