@@ -59,13 +59,14 @@ def name_chord(notes):
 def read(path):
     """Parse a .chords file: (title, {index: sorted notes})."""
     title, chords = os.path.splitext(os.path.basename(path))[0], {}
-    for line in open(path, encoding="utf-8"):
-        m = re.match(r"\s*Name:\s*(.+)", line)
-        if m:
-            title = m.group(1).strip()
-        m = re.match(r"\s*(\d+):\s*([\d,\s]+)", line)
-        if m:
-            chords[int(m.group(1))] = sorted({int(x) for x in m.group(2).split(",") if x.strip()})
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            m = re.match(r"\s*Name:\s*(.+)", line)
+            if m:
+                title = m.group(1).strip()
+            m = re.match(r"\s*(\d+):\s*([\d,\s]+)", line)
+            if m:
+                chords[int(m.group(1))] = sorted({int(x) for x in m.group(2).split(",") if x.strip()})
     return title, chords
 
 
