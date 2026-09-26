@@ -50,6 +50,22 @@ class HardRulesTest(unittest.TestCase):
         out = self.check(spec)
         self.assertEqual([n - out[0][0] for n in out[0]], [0, 19, 22, 26, 27])
 
+    def test_shape_slash_keeps_slash_bass_and_root_shape(self):
+        spec = {"name": "Test Shape Slash", "type": "shape", "key": "Am", "style": "shape",
+                "register": {"bass": [30, 42], "top": [56, 72]},
+                "shapes": {"m9": [0, 19, 22, 26, 27]},
+                "rows": [["Am9/C", "Cm9", "Ebm9", "F#m9"]] + [["Am9", "Cm9", "Ebm9", "F#m9"]] * 3}
+        out = self.check(spec)
+        self.assertEqual(out[0][0] % 12, 0)
+        self.assertEqual({n % 12 for n in out[0]}, theory.pcs("Am9/C"))
+
+    def test_rootless_slash_keeps_the_root(self):
+        rows = [r[:] for r in FUNCTIONAL["rows"]]
+        rows[0][0] = "C/E"
+        out = self.check(dict(FUNCTIONAL, rows=rows))
+        self.assertEqual(out[0][0] % 12, 4)
+        self.assertIn(0, {n % 12 for n in out[0]}, out[0])
+
     def test_deterministic(self):
         self.assertEqual(voicer.voice_set(FUNCTIONAL), voicer.voice_set(FUNCTIONAL))
 
@@ -57,8 +73,35 @@ class HardRulesTest(unittest.TestCase):
 class ErrorsTest(unittest.TestCase):
     def test_impossible_register_names_the_pad(self):
         spec = dict(FUNCTIONAL, register={"bass": [39, 52], "top": [60, 61]})
-        with self.assertRaisesRegex(voicer.VoicingError, "pad 1 .Cmaj9."):
+        with self.assertRaisesRegex(voicer.VoicingError, "pad 1 .Cmaj9.: no voicing satisfies the hard rules"):
             voicer.voice_set(spec)
+
+    def test_voicing_error_without_name(self):
+        spec = dict(FUNCTIONAL, register={"bass": [39, 52], "top": [60, 61]})
+        del spec["name"]
+        with self.assertRaisesRegex(voicer.VoicingError, r"^\?: pad 1"):
+            voicer.voice_set(spec)
+
+    def test_non_string_symbol_names_pad(self):
+        rows = [r[:] for r in FUNCTIONAL["rows"]]
+        rows[2][1] = 7
+        with self.assertRaisesRegex(ValueError, "Test Functional: pad 10"):
+            voicer.validate(dict(FUNCTIONAL, rows=rows))
+
+    def test_bad_shapes(self):
+        for shapes in ([0, 7], {"m9": [0]}, {"m9": [0, 7, 10, 14, 15, 17, 19]},
+                       {"m9": [0, -5, 7]}, {"m9": [0, "7"]}, {"m9": "0 7"}, {"m9": [0, True]}):
+            with self.assertRaisesRegex(ValueError, "Test Functional: shapes", msg=shapes):
+                voicer.validate(dict(FUNCTIONAL, shapes=shapes))
+
+    def test_bad_register(self):
+        for reg in ([39, 52], {"bass": [52, 39]}, {"top": [64]}, {"bass": [39.5, 52]},
+                    {"top": "64-74"}, {"middle": [50, 60]}):
+            with self.assertRaisesRegex(ValueError, "Test Functional: register", msg=reg):
+                voicer.validate(dict(FUNCTIONAL, register=reg))
+
+    def test_good_register_and_shapes_pass(self):
+        voicer.validate(dict(FUNCTIONAL, register={"bass": [30, 42]}, shapes={"m9": [0, 19, 22]}))
 
     def test_bad_rows(self):
         with self.assertRaisesRegex(ValueError, "4 rows of 4"):

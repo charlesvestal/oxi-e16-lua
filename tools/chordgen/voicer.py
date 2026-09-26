@@ -30,11 +30,39 @@ def validate(spec):
     if spec.get("style") not in STYLES:
         raise ValueError(f"{name}: style must be one of {', '.join(STYLES)}")
     for i, sym in enumerate(s for r in rows for s in r):
+        if not isinstance(sym, str):
+            raise ValueError(f"{name}: pad {i + 1}: chord symbol must be a string, got {sym!r}")
         try:
             parse(sym)
         except ValueError as e:
             raise ValueError(f"{name}: pad {i + 1}: {e}") from None
+    _validate_shapes(name, spec.get("shapes", {}))
+    _validate_register(name, spec.get("register", {}))
     return spec
+
+
+def _is_int(x):
+    return isinstance(x, int) and not isinstance(x, bool)
+
+
+def _validate_shapes(name, shapes):
+    if not isinstance(shapes, dict):
+        raise ValueError(f"{name}: shapes must map a quality to a list of intervals")
+    for q, shape in shapes.items():
+        if not (isinstance(shape, list) and 2 <= len(shape) <= 6
+                and all(_is_int(s) and s >= 0 for s in shape)):
+            raise ValueError(f"{name}: shapes[{q!r}] must be a list of 2-6 intervals "
+                             f"(non-negative ints above the root), got {shape!r}")
+
+
+def _validate_register(name, reg):
+    if not isinstance(reg, dict):
+        raise ValueError(f"{name}: register must be {{\"bass\": [lo, hi], \"top\": [lo, hi]}}")
+    for k, v in reg.items():
+        if k not in DEFAULT_REGISTER:
+            raise ValueError(f"{name}: register: unknown key {k!r} (expected bass, top)")
+        if not (isinstance(v, list) and len(v) == 2 and all(_is_int(x) for x in v) and v[0] <= v[1]):
+            raise ValueError(f"{name}: register[{k!r}] must be [lo, hi] MIDI ints with lo <= hi, got {v!r}")
 
 
 def load_spec(path):
@@ -46,10 +74,11 @@ def register(spec):
     return {**DEFAULT_REGISTER, **spec.get("register", {})}
 
 
-def upper_pcs(root, ivs, style):
-    """Pitch classes above the bass. Rootless drops the root; every style drops
-    the 5th when there are enough other colors."""
-    tones = [i for i in ivs if i != 0] if style == "rootless" else list(ivs)
+def upper_pcs(root, ivs, style, slash=None):
+    """Pitch classes above the bass. Rootless drops the root (unless a slash
+    note is in the bass, so the root would vanish); every style drops the 5th
+    when there are enough other colors."""
+    tones = [i for i in ivs if i != 0] if style == "rootless" and slash is None else list(ivs)
     if len(tones) > (3 if style == "rootless" else 5) and 7 in tones:
         tones.remove(7)
     seen, out = set(), []
@@ -70,14 +99,15 @@ def candidates(symbol, spec, reg):
     for bass in basses:
         if spec["style"] == "shape":
             shape = spec.get("shapes", {}).get(quality, list(ivs))
-            uppers = [tuple(bass + s for s in shape if s > 0)]
+            r = bass + (root - b) % 12     # the shape sits on the root, even over a slash bass
+            uppers = [tuple(r + s for s in shape if r + s > bass)]
         else:
             choices = [[n for n in range(bass + 1, hi + 1) if n % 12 == p]
-                       for p in upper_pcs(root, ivs, spec["style"])]
+                       for p in upper_pcs(root, ivs, spec["style"], slash)]
             uppers = itertools.product(*choices)
         for up in uppers:
             notes = tuple(sorted((bass,) + tuple(up)))
-            if len(set(notes)) != len(notes) or notes[0] != bass:
+            if len(set(notes)) != len(notes):
                 continue
             if not (lo <= notes[-1] <= hi and 3 <= len(notes) <= 7) or mud(notes):
                 continue
@@ -115,8 +145,9 @@ def voice_set(spec):
     for i, sym in enumerate(syms):
         cs = candidates(sym, spec, reg)
         if not cs:
-            raise VoicingError(f"{spec['name']}: pad {i + 1} ({sym}): no voicing fits "
-                               f"bass {reg['bass']} / top {reg['top']} without mud")
+            raise VoicingError(f"{spec.get('name', '?')}: pad {i + 1} ({sym}): no voicing satisfies "
+                               f"the hard rules (register, 3-7 notes, no mud); "
+                               f"bass {reg['bass']}, top {reg['top']}")
         cs.sort(key=lambda n: (node_cost(n, style, reg), n))
         cs = cs[:MAX_CANDIDATES]
         cands.append(cs)
