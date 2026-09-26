@@ -1,0 +1,13 @@
+{
+  "name": "Neo Soul",
+  "type": "functional",
+  "key": "Ebm",
+  "style": "rootless",
+  "reference": "neo_soul_minor",
+  "rows": [
+    ["Ebm9", "Abm11", "Bmaj9", "Bb7#9"],
+    ["Gbmaj9", "Fm7b5", "Bb7b9", "Ebm11"],
+    ["Bmaj7#11", "Bbm7", "Abm9", "Db13"],
+    ["Gbmaj7", "Fm7", "Ebm9", "Db9sus4"]
+  ]
+}

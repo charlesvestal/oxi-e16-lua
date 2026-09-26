@@ -1,0 +1,15 @@
+{
+  "name": "Detroit",
+  "type": "shape",
+  "key": "Am",
+  "style": "shape",
+  "reference": "detroit_techno",
+  "register": {"bass": [30, 42], "top": [56, 72]},
+  "shapes": {"m9": [0, 19, 22, 26, 27], "maj9": [0, 19, 23, 26, 28]},
+  "rows": [
+    ["Am9", "Cm9", "Ebm9", "F#m9"],
+    ["Fm9", "Abm9", "Bm9", "Dm9"],
+    ["Emaj9", "Gmaj9", "Bbmaj9", "Dbmaj9"],
+    ["Dm9", "Fmaj9", "Am9", "Cmaj9"]
+  ]
+}

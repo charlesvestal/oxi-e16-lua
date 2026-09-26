@@ -63,6 +63,10 @@ so generated sets pack into `chords.lua` unchanged. The `.chords` format stays
 }
 ```
 
+Optional fields: `reference` (slug of the current set to compare against in the harness) and
+`shapes` (for `style: "shape"`: offsets above the bass per chord quality, e.g.
+`{"m9": [0, 19, 22, 26, 27]}`; a quality without a shape uses its plain intervals).
+
 `style` is one of `rootless` (3rd/7th-based upper structure plus extensions), `quartal`,
 `open` (5ths and 9ths, wide), `close` (close triads/7ths), `shape` (one fixed interval
 shape above the bass; the spec gives it as `"shape": [0, 7, 10, 14, 15]` or similar).
