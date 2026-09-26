@@ -115,6 +115,8 @@ all reference sets when a type has only one.
 - voicer hard rules hold for every chord of every spec
 - analyzer reproduces the reference numbers above for Neo Soul Minor and Detroit Techno (from cached `.chords`)
 - `build.py` output parses with `make_chords.py --dir`, and `lua test/chords_test.lua` passes on the generated `chords.lua`
+  (the test reads source sets from `build/chordsets/`; it gains an optional directory argument,
+  `lua test/chords_test.lua build/chordgen/sets`)
 
 ## Licensing
 
