@@ -175,6 +175,42 @@ E.load(SCRIPT)
 E.show(12)
 check(E.labels[3] == "V80", "settings persist across reload (" .. E.labels[3] .. ")")
 
+-- turning a pad sets the length
+local function len(n)
+  E.page = 1
+  for _ = 1, math.abs(n) do
+    controller.onEncoderTurn{id = 5, index = 5, page = 1, increment = n > 0 and 1 or -1,
+      value = 8192, scaled = 64, is_held = false}
+  end
+end
+E.show(1); E.run(60)
+local l5 = E.labels[5]
+len(-40)
+check(E.labels[5] == "Hold", "pad knob: length Hold (" .. E.labels[5] .. ")")
+E.run(1200)
+check(E.labels[5] == l5, "the pad's label comes back after a second (" .. E.labels[5] .. ")")
+len(5)
+check(E.labels[5] == "0.5s", "pad knob: length 0.5 s (" .. E.labels[5] .. ")")
+E.sent = {}; pad(1, 2); E.run(300)
+local on = #ons()
+E.run(400)
+-- note-off is sent as note-on with velocity 0
+local function offs()
+  local n = 0
+  for _, m in ipairs(E.sent) do if m.st & 0xF0 == 0x90 and m.d2 == 0 then n = n + 1 end end
+  return n
+end
+check(on > 0 and offs() == on, "a 0.5 s length releases the chord (" .. on .. " on, " .. offs() .. " off)")
+len(-5)
+E.sent = {}; pad(1, 3); E.run(2000)
+check(#ons() > 0 and offs() == 0, "Hold keeps the chord sounding")
+len(3)
+E.run(400)
+check(offs() == #ons(), "turning up from Hold releases the sounding chord")
+E.show(12)
+check(E.labels[4] == "0.3s", "the settings page shows the same length (" .. E.labels[4] .. ")")
+len(-3)
+
 -- ignores foreign events
 controller.onEncoderTurn{id = 255, index = 1, page = 3, increment = 1, value = 0, scaled = 0, is_held = false}
 controller.onEncoderPress{id = 255, index = 1, page = 3, value = 0, scaled = 0}

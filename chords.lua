@@ -1,7 +1,9 @@
 -- CHORDS: 176 chord pads on 11 pages, for the OXI E16 (firmware >= 1.2.0)
 --
 -- Pages 1-11: each page is one chord set (a mood), 16 hand-voiced chords.
---   Push a pad to play its chord (the E16 reports pushes on release). Labels show chord names, minor chords with a
+--   Push a pad to play its chord (the E16 reports pushes on release). Turn any
+--   pad to set the length (Hold, 0.1-4 s; the same setting as encoder 4 on
+--   page 12); the pad's label shows it for a second. Labels show chord names, minor chords with a
 --   lowercase root (f#11 = F#m11, s = sus, a9 = add9, h7 = half-dim); the ring lights
 --   while the chord sounds (its fill follows the bass note). The header shows
 --   the set's name.
@@ -15,6 +17,22 @@
 -- writes the data block below. Settings persist in scene variables:
 -- tr oct vel gate strum dir ch out.
 
+--@assign id=1  abbr="Pad1"  name="Pad 1 length" l=0 h=127 manual=true g=1
+--@assign id=2  abbr="Pad2"  name="Pad 2 length" l=0 h=127 manual=true g=2
+--@assign id=3  abbr="Pad3"  name="Pad 3 length" l=0 h=127 manual=true g=3
+--@assign id=4  abbr="Pad4"  name="Pad 4 length" l=0 h=127 manual=true g=4
+--@assign id=5  abbr="Pad5"  name="Pad 5 length" l=0 h=127 manual=true g=5
+--@assign id=6  abbr="Pad6"  name="Pad 6 length" l=0 h=127 manual=true g=6
+--@assign id=7  abbr="Pad7"  name="Pad 7 length" l=0 h=127 manual=true g=7
+--@assign id=8  abbr="Pad8"  name="Pad 8 length" l=0 h=127 manual=true g=8
+--@assign id=9  abbr="Pad9"  name="Pad 9 length" l=0 h=127 manual=true g=9
+--@assign id=10 abbr="Pd10" name="Pad 10 length" l=0 h=127 manual=true g=10
+--@assign id=11 abbr="Pd11" name="Pad 11 length" l=0 h=127 manual=true g=11
+--@assign id=12 abbr="Pd12" name="Pad 12 length" l=0 h=127 manual=true g=12
+--@assign id=13 abbr="Pd13" name="Pad 13 length" l=0 h=127 manual=true g=13
+--@assign id=14 abbr="Pd14" name="Pad 14 length" l=0 h=127 manual=true g=14
+--@assign id=15 abbr="Pd15" name="Pad 15 length" l=0 h=127 manual=true g=15
+--@assign id=16 abbr="Pd16" name="Pad 16 length" l=0 h=127 manual=true g=16
 --@assign id=17 abbr="Pad1"  name="Pad 1"  p=true g=1
 --@assign id=18 abbr="Pad2"  name="Pad 2"  p=true g=2
 --@assign id=19 abbr="Pad3"  name="Pad 3"  p=true g=3
@@ -67,10 +85,13 @@ local H, nh = {}, 0        -- notes sounding
 local Q, qi, qn, qt = {}, 1, 0, 0   -- strum queue: notes, next, count, ms to next
 local cur, left = 0, 0     -- sounding pad (1-176); ms until release (0 = hold)
 local title, shown         -- pending / displayed header text
+local flash = 0            -- ms left showing the length on a pad label
 
 local function clamp(v, lo, hi)
   return v < lo and lo or v > hi and hi or v
 end
+
+local function glab(v) return v == 0 and "Hold" or v // 10 .. "." .. v % 10 .. "s" end
 
 local function nname(n)
   local k = n % 12 * 2 + 1
@@ -126,7 +147,7 @@ local function drawAll(pg)
       local v = SV[k]
       leds.updateByIndex(k, (v - LO[k]) * FULL // (HI[k] - LO[k]), C_ON)
       slots.update(k, k == 1 and (v > 0 and "T+" or "T") .. v or k == 2 and (v > 0 and "Oc+" or "Oc") .. v
-        or k == 3 and "V" .. v or k == 4 and (v == 0 and "Hold" or v // 10 .. "." .. v % 10 .. "s")
+        or k == 3 and "V" .. v or k == 4 and glab(v)
         or k == 5 and "S" .. v * 10 or k == 6 and (v == 1 and "Down" or "Up")
         or k == 7 and "Ch" .. v or v == 0 and "All" or "O" .. v)
     end
@@ -179,6 +200,10 @@ function system.update()
     H[nh], qi, qt = Q[qi], qi + 1, qt + SV[5] * 10
   end
   qt = qt - DT
+  if flash > 0 then
+    flash = flash - DT
+    if flash <= 0 then drawAll() end
+  end
   if left > 0 then
     left = left - DT
     if left <= 0 then
@@ -189,13 +214,21 @@ function system.update()
   end
 end
 
--- Turn ids 33-40 change the settings (page 12). Push ids 17-32 play pads on
--- pages 1-11; 49 is all notes off.
+-- Turn ids 1-16 set the length on pages 1-11; 33-40 change the settings
+-- (page 12). Push ids 17-32 play pads on pages 1-11; 49 is all notes off.
 function controller.onEncoderTurn(e)
   local id, d = e.id, e.increment
   -- 0 = not a physical turn (recorder, random, group); 255 = non-script control
-  if d == 0 or id < 33 or id > 40 then return end
+  if d == 0 or not (id >= 33 and id <= 40 or id <= 16 and e.page < SETP) then return end
   controller.set(id, "v", 8192)       -- keep manual encoders off their end stops
+  if id <= 16 then
+    SV[4] = clamp(SV[4] + (d > 0 and 1 or -1), LO[4], HI[4])
+    var.set("gate", SV[4])
+    if cur > 0 then left = SV[4] * 100 end   -- the sounding chord follows: Hold keeps it
+    slots.update(id, glab(SV[4]))
+    flash = 1000
+    return
+  end
   local k = id - 32
   SV[k] = clamp(SV[k] + (k == 3 and d or d > 0 and 1 or -1), LO[k], HI[k])
   var.set(SN[k], SV[k])
@@ -232,7 +265,9 @@ end
 
 function page.onInit()
   pull()
-  for id = 33, 40 do controller.set(id, {manual = true, v = 8192}) end
+  for id = 1, 40 do
+    if id < 17 or id > 32 then controller.set(id, {manual = true, v = 8192}) end
+  end
   system.setUpdateRate(20)
   drawAll()
 end

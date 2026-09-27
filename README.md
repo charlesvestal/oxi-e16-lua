@@ -119,10 +119,14 @@ future clock callback would only need to drive the beat counter.
 
 ## Chords
 
-**Pages 1–11:** each page is one chord set (a mood), with 16 hand-voiced chords. Push a
+**Pages 1–11:** each page is one chord set (a mood), with 16 chords. Push a
 pad to play it. The header shows the set's name, and labels show chord names (minor chords
 use a lowercase root: `f#11` = F#m11; `s` = sus, `a9` = add9, `h7` = half-diminished,
 `?` = no simple name). The ring lights on the sounding pad.
+
+Turn any pad to set the **length**: Hold (the chord drones until the next pad), or 0.1–4 s.
+It's the same setting as encoder 4 on the settings page, and the pad's label shows it for a
+second. A sounding chord follows the change, so turning down to Hold keeps it going.
 
 **Page 12: settings.**
 1. transpose −12…+12 (the root key; labels follow)
