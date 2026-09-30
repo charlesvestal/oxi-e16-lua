@@ -165,6 +165,8 @@ local function drawAll(pg)
     leds.updateByIndex(2, (bpm - 20) * FULL // 280, C_ON)
     slots.update(2, "" .. bpm)
     slots.update(3, "Stop")
+    leds.updateByIndex(3, FULL, C_OFF)   -- the push-only buttons stay lit
+    leds.updateByIndex(4, FULL, C_OFF)
   end
   local n = 0
   for t = 1, N do n = n + ON[t] end

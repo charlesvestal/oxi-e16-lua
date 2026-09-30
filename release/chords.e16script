@@ -213,7 +213,7 @@ local function drawAll(pg)
         or k == 7 and "Ch" .. v or v == 0 and "All" or "O" .. v)
     end
     for k = 9, 16 do
-      leds.updateByIndex(k, 0, C_ON)
+      leds.updateByIndex(k, k < 11 and FULL or 0, C_ON)   -- Panic and Reset lit: they're buttons
       slots.update(k, k == 9 and "Pnic" or k == 10 and "Rset" or "")
     end
     setTitle("Chord settings")
@@ -306,6 +306,7 @@ end
 function controller.onEncoderPress(e)
   if e.id == 58 then
     rz = 0
+    leds.updateByIndex(10, 0, C_HIT)
     slots.update(10, "Hold")
     return
   end
@@ -325,7 +326,7 @@ end
 function controller.onEncoderRelease(e)
   if e.id == 58 and rz >= 0 then
     rz = -1
-    leds.updateByIndex(10, 0, C_ON)
+    leds.updateByIndex(10, FULL, C_ON)
     slots.update(10, "Rset")
   end
   local k = (e.page - 1) * 16 + e.id - 16

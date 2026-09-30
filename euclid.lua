@@ -168,7 +168,7 @@ local function drawAll(pg)
       slots.update(i, k == 1 and "" .. v or k == 2 and DL[v] or k == 3 and "G" .. v
         or k == 4 and "Ch" .. v or (v == 0 and "All" or "O" .. v))
     end
-    leds.updateByIndex(6, run and FULL or 0, C_HIT)
+    leds.updateByIndex(6, FULL, run and C_HIT or C_ON)   -- always lit: it's a button
     slots.update(6, run and "Stop" or "Play")
   end
   -- Title freeze workaround: reset now, set the new text on the next update.

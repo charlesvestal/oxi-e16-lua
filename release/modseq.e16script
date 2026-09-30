@@ -112,7 +112,7 @@ local function drawAll(pg)
         or k == 4 and (v < 100 and "CC" or "C") .. v or k == 5 and "Ch" .. v
         or (v == 0 and "All" or "O" .. v))
     end
-    leds.updateByIndex(7, run and FULL or 0, C_PLAY)
+    leds.updateByIndex(7, FULL, run and C_PLAY or C_ON)  -- always lit: it's a button
     slots.update(7, run and "Stop" or "Play")
   end
   setTitle()

@@ -209,6 +209,7 @@ local function drawAll(pg)
         .. (k == 1 and v - 7 or k == 5 and v + 2 or v) .. (k == 10 and "%" or ""))
     end
     strip(0, pg)
+    if pg == 2 then leds.updateByIndex(6, FULL, run and C_PLAY or C_ON) end   -- Play: a lit button
   end
   setTitle()
 end
@@ -294,7 +295,7 @@ function controller.onEncoderTurn(e)
   local id, d = e.id, e.increment
   -- 0 = not a physical turn (recorder, random, group); 255 = non-script control
   if d == 0 or id < 1 or id > 37 or id > 8 and id < 33 then return end
-  controller.set(id, "v", 8192)       -- keep manual encoders off their end stops
+  -- (API 1.3 delivers turns at the end stops, so no write-back to mid-scale here)
   local k = id > 32 and id - 24 or id
   local v = SV[k]
   if k == 9 then
