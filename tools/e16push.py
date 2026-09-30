@@ -123,18 +123,11 @@ def scene_messages(s, slot):
 
 class E16:
     def __init__(self):
-        for attempt in range(5):              # CoreMIDI sometimes refuses a new client (-304) for a moment
-            try:
-                name = next((n for n in mido.get_output_names() if "E16" in n), None)
-                if not name:
-                    sys.exit("no OXI E16 MIDI port found")
-                self.out = mido.open_output(name)
-                self.inp = mido.open_input(next(n for n in mido.get_input_names() if "E16" in n))
-                return
-            except Exception:
-                if attempt == 4:
-                    raise
-                time.sleep(1)
+        name = next((n for n in mido.get_output_names() if "E16" in n), None)
+        if not name:
+            sys.exit("no OXI E16 MIDI port found")
+        self.out = mido.open_output(name)
+        self.inp = mido.open_input(next(n for n in mido.get_input_names() if "E16" in n))
 
     def request(self, data, timeout=2.0):
         for _ in self.inp.iter_pending():
