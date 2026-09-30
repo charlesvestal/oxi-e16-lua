@@ -78,7 +78,7 @@ end
 local changed, total = 0, 0
 for _ = 1, 10 do
   local a = steps(pattern())
-  E.press(18)
+  E.press(23)
   local b = steps(pattern())
   for s = 0, 15 do
     total = total + 1

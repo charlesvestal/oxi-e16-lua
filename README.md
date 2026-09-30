@@ -215,12 +215,12 @@ transpose apply live. The pattern is stored, so mutations survive reloads.
 | enc | turn | push |
 |---|---|---|
 | 1 | density | Generate |
-| 2 | length 1–32 | Mutate |
+| 2 | length 1–32 | |
 | 3 | root | |
 | 4 | scale (8 scales) | restart |
 | 5 | octave | Regen |
 | 6 | transpose | Undo |
-| 7 | mutate amount | |
+| 7 | mutate amount | Mutate |
 | 8 | BPM | **play/stop** |
 
 Encoders 9–16 show the 8 steps around the playhead. They're a display, not controls: the ring

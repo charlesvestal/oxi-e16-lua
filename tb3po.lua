@@ -17,7 +17,7 @@
 --
 -- Page 1, turn:  1 density | 2 length 1-32 | 3 root | 4 scale | 5 octave |
 --                6 transpose | 7 mutate amount | 8 BPM
---         push:  1 generate | 2 mutate | 4 restart | 5 regen | 6 undo |
+--         push:  1 generate | 4 restart | 5 regen | 6 undo | 7 mutate |
 --                8 play/stop
 --   Encoders 9-16 show the 8 steps around the playhead: ring = pitch, colors
 --   for accent / slide / playhead; labels show the note.
@@ -57,7 +57,6 @@
 --@assign id=1  abbr="Dens" name="Density"     l=0 h=127 manual=true g=1
 --@assign id=17 abbr="Dens" name="Generate"    p=true g=1
 --@assign id=2  abbr="Len"  name="Length"      l=0 h=127 manual=true g=2
---@assign id=18 abbr="Len"  name="Mutate"      p=true g=2
 --@assign id=3  abbr="Root" name="Root"        l=0 h=127 manual=true g=3
 --@assign id=4  abbr="Scl"  name="Scale"       l=0 h=127 manual=true g=4
 --@assign id=20 abbr="Scl"  name="Restart"     p=true g=4
@@ -66,6 +65,7 @@
 --@assign id=6  abbr="Trns" name="Transpose"   l=0 h=127 manual=true g=6
 --@assign id=22 abbr="Trns" name="Undo"        p=true g=6
 --@assign id=7  abbr="Mut"  name="Mutate amount" l=0 h=127 manual=true g=7
+--@assign id=23 abbr="Mut"  name="Mutate"      p=true g=7
 --@assign id=8  abbr="BPM"  name="Tempo"       l=0 h=127 manual=true g=8
 --@assign id=24 abbr="BPM"  name="Play/Stop"   p=true g=8
 --@assign id=33 abbr="Step" name="Step size"   l=0 h=127 manual=true g=17
@@ -292,7 +292,7 @@ function system.update()
   end
 end
 
--- Turn ids 1-8 and 33-37 change settings; pushes 17, 18, 20-22 and 24 are actions.
+-- Turn ids 1-8 and 33-37 change settings; pushes 17, 20-24 and 54 are actions.
 function controller.onEncoderTurn(e)
   local id, d = e.id, e.increment
   -- 0 = not a physical turn (recorder, random, group); 255 = non-script control
@@ -318,7 +318,7 @@ function controller.onEncoderPress(e)
   local id = e.id
   if id == 17 or id == 21 then
     generate(id == 17)
-  elseif id == 18 then
+  elseif id == 23 then
     save(true)
     rs = (ticks * 7919 + SV[14]) & 0x7FFFFFFF    -- 32-bit ints: keep the product small
     for s = 1, SV[2] do
