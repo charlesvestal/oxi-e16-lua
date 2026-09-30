@@ -1,4 +1,5 @@
 -- MODSEQ: 16-step CC modulation sequencer, for the OXI E16 (Lua API >= 1.3.0)
+-- By Charles Vestal, https://github.com/charlesvestal/oxi-e16-lua (MIT license)
 --
 -- Page 1: one step per encoder.
 --   turn: step value 0-127 | push: glide on/off (ramp to the next step's value)

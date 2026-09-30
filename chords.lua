@@ -1,4 +1,5 @@
 -- CHORDS: 176 chord pads on 11 pages, for the OXI E16 (Lua API >= 1.3.0)
+-- By Charles Vestal, https://github.com/charlesvestal/oxi-e16-lua (MIT license)
 --
 -- Pages 1-11: each page is one chord set (a mood), 16 hand-voiced chords.
 --   Push a pad to play its chord. Turn any pad to set the length (Held, Ltch,

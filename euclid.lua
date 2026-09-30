@@ -1,4 +1,5 @@
 -- EUCLID: 4-track Euclidean MIDI sequencer for the OXI E16 (Lua API >= 1.3.0)
+-- By Charles Vestal, https://github.com/charlesvestal/oxi-e16-lua (MIT license)
 --
 -- Page 1, one track per row:     Len   Puls   Rot   Note
 --   turn:  Len 1-32 | Puls 0-Len | Rot -(Len-1)..+(Len-1) | Note 0-127
@@ -17,10 +18,8 @@
 -- only silences or rejoins them. The header shows the tempo being followed.
 -- Gates are timed in ms by system.update().
 --
--- Memory: the Lua heap is ~40 KB including the VM (~12 KB). Bytecode dominates
--- script cost, so the code is table-driven (few functions) and allocates
--- nothing while playing: ~18 KB live, ~24 KB peak (32-bit heap_4 model,
--- comments stripped; the app's minifier makes it smaller).
+-- Memory: bytecode dominates script cost on the E16, so the code is
+-- table-driven (few functions) and allocates nothing while playing.
 
 --@assign id=1  abbr="Len1" name="T1 Length"  l=0 h=127 manual=true g=1
 --@assign id=17 abbr="Len1" name="T1 Mute"    p=true g=1
@@ -84,7 +83,6 @@ local SV = {}              -- current (clamped) settings values
 local DIVS = {1, 2, 3, 4, 6, 8}
 local DL = {"1/4", "1/8", "8T", "1/16", "D5", "16T", "D7", "1/32"}
 local title, shown         -- pending / displayed header text
-local memT = 0             -- update ticks left showing the heap in the header
 
 local function clamp(v, lo, hi)
   return v < lo and lo or v > hi and hi or v
@@ -197,10 +195,6 @@ end
 
 function system.update()
   if title then page.setTitle(title); title = nil end
-  if memT > 0 then
-    memT = memT - 1
-    if memT == 0 then page.resetTitle(); title = shown end
-  end
   for t = 1, 4 do
     local l = LEFT[t]
     if l > 0 then
@@ -319,9 +313,4 @@ function page.onInit()
     if id < 17 or id > 32 then controller.set(id, {manual = true, v = 8192}) end
   end
   drawAll()
-  -- Show Lua's own heap count (excludes allocator overhead) for ~2 s.
-  collectgarbage()
-  local kb = math.floor(collectgarbage("count"))
-  print("euclid: Lua heap " .. kb .. " KB")
-  title, memT = "EUC heap " .. kb .. "KB", 150
 end

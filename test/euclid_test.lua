@@ -48,8 +48,6 @@ check(E.rate == 10, "update rate 10 ms (gates)")
 check(E.listening and E.res == 96, "listens to the clock at 24 ticks per quarter")
 check(E.bpm == 120, "sets the internal tempo from BPM")
 E.run(100)
-check(E.title:match("^EUC heap %d+KB$") ~= nil, "startup header shows heap ('" .. E.title .. "')")
-E.run(3000)
 check(E.title == "EUC | 120", "title shows stopped + bpm ('" .. E.title .. "')")
 check(E.labels[1] == "L16" and E.labels[2] == "P4" and E.labels[3] == "R0" and E.labels[4] == "C2",
   "labels for track 1")

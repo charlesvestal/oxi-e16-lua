@@ -1,4 +1,5 @@
 -- TB-3PO: generative 303-style acid sequencer, for the OXI E16 (Lua API >= 1.3.0)
+-- Port by Charles Vestal, https://github.com/charlesvestal/oxi-e16-lua
 --
 -- Port of the TB-3PO Hemisphere applet (O&C / Phazerville Hemisphere Suite) to
 -- MIDI, with Generate / Mutate / Undo as in schwung-tb3po. Original: Copyright

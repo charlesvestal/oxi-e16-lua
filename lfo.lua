@@ -1,4 +1,5 @@
 -- LFO: 16 LFOs sending MIDI CC, each on its own channel and CC number, for the
+-- By Charles Vestal, https://github.com/charlesvestal/oxi-e16-lua (MIT license)
 -- OXI E16 (Lua API >= 1.3.0). A modulation bank across several synths.
 --
 -- Pages 1-4: four LFOs per page, one per row (page 1 = LFO 1-4 ... page 4 = LFO 13-16).
