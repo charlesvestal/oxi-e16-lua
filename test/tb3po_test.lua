@@ -63,11 +63,11 @@ E.run(60)
 check(E.title:match("^Gen %x%x%x%x$") and E.title ~= "Gen 3F2A", "Generate shows the new seed (" .. E.title .. ")")
 local p3 = pattern()
 check(p3 ~= p1, "Generate makes a new pattern")
-E.press(22)
+E.press(18)
 check(pattern() == p1, "Undo restores the previous pattern")
-E.press(22)
+E.press(18)
 check(pattern() == p3, "Undo again swaps back (redo)")
-E.press(22)
+E.press(18)
 
 -- Mutate changes some steps but keeps most
 local function steps(p)
@@ -84,7 +84,7 @@ for _ = 1, 10 do
     total = total + 1
     if a[s] ~= b[s] then changed = changed + 1 end
   end
-  E.press(22)                             -- undo keeps each trial independent
+  E.press(18)                             -- undo keeps each trial independent
 end
 local frac = changed / total
 check(frac > 0.02 and frac < 0.35, ("Mutate at 25%% changes some steps (%.0f%% of steps differ)"):format(frac * 100))

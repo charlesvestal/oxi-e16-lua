@@ -215,11 +215,11 @@ transpose apply live. The pattern is stored, so mutations survive reloads.
 | enc | turn | push |
 |---|---|---|
 | 1 | density | Generate |
-| 2 | length 1–32 | |
+| 2 | length 1–32 | Undo |
 | 3 | root | |
 | 4 | scale (8 scales) | restart |
 | 5 | octave | Regen |
-| 6 | transpose | Undo |
+| 6 | transpose | |
 | 7 | mutate amount | Mutate |
 | 8 | BPM | **play/stop** |
 
