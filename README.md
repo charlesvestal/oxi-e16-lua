@@ -1,7 +1,7 @@
 # Lua scripts for the OXI E16
 
-Five scripts that run entirely on the E16 (firmware ≥ 1.2.0), each with a
-ready-wired scene:
+Five scripts that run entirely on the E16 (Lua API ≥ 1.3.0, for the clock and
+push/release callbacks), each with a ready-wired scene:
 
 | script | scene | what it is |
 |---|---|---|
@@ -11,7 +11,8 @@ ready-wired scene:
 | `modseq.lua` | Mod Seq | 16-step CC modulation sequencer with glide |
 | `tb3po.lua` | TB-3PO | generative 303-style acid sequencer (port of the O&C / Phazerville applet, GPL-3.0) |
 
-All five have run on hardware (firmware 1.2.0).
+All five ran on hardware on firmware 1.2.0. The clock and push/release versions are
+tested against a mock of the 1.3.0 API and still need a hardware check.
 
 ## Loading a script onto the E16
 
@@ -43,9 +44,10 @@ just its script over USB-MIDI, without the app (needs `pip install mido python-r
 
     python3 tools/e16push.py list                # scenes by home-screen encoder, 1-16
     python3 tools/e16push.py push 2 euclid.lua   # minify and send to the scene on encoder 2
+    python3 tools/e16push.py scene 2 "$E/Scenes/Euclid.oxie16"   # the whole scene, wiring included
 
-Reopen the scene on the E16 to run the new code. Pages, labels and script variables aren't touched,
-so use the app when the wiring changes.
+Reopen the scene on the E16 to run the new code. `push` leaves pages, labels and script variables
+alone. When the wiring changes, `scene` uploads everything the way the OXI App does.
 
 To switch pages on the E16, tap Shift and then a page (P.1, P.2, …). Every script keeps
 running on any page, and its settings are saved in the scene's script variables.
@@ -67,7 +69,8 @@ follow the OXI ONE's Euclidean generator.
 
 Rings: col 1 shows the playhead, col 2 pulse density, col 3 rotation, and col 4 the
 note (it flashes while a note sounds). Labels show `L16`, `P4` (`i4` when inverted), `R+2`, and
-the note name (`C2`). The header shows `EUC > 120` while playing and `EUC | 120` while stopped.
+the note name (`C2`). The header shows `EUC > 120` while playing and `EUC | 120` while stopped
+(with an external clock, its tempo).
 
 **Page 2: settings.**
 
@@ -78,10 +81,11 @@ the note name (`C2`). The header shows `EUC > 120` while playing and `EUC | 120`
 | 3 | gate 10–990 ms | `G60` |
 | 4 | MIDI channel | `Ch10` |
 | 5 | output port (0 = all) | `All` / `O2` |
-| 6 | tempo trim, ±9.9 % in 0.1 % steps | `T+5` |
 
 Defaults are a GM drum kit on channel 10: kick 36 E(4,16), snare 38 E(2,16) rotated by 4,
 closed hat 42 E(8,16), open hat 46 E(3,16) rotated by 2.
+
+Steps follow the E16's clock; see [Clock and transport](#clock-and-transport).
 
 ## LFOx16
 
@@ -97,7 +101,9 @@ A modulation bank for several synths: 16 LFOs, each with its own MIDI channel an
 - **Rate** is free (20 s … 6.4 Hz) or **synced** to the tempo (8 bars … 1/32, with triplets).
   Free rates below 1 Hz show their period (`2.5s`), faster ones their frequency (`1.0H` = 1 Hz).
   Pushing Rate toggles between them and keeps about the same speed. Synced LFOs follow one
-  beat counter, so they stay locked together.
+  beat counter, so they stay locked together. While the E16's clock runs (its internal clock or
+  external MIDI transport), the counter follows the clock's position, and a Start restarts every
+  LFO on the downbeat. While transport is stopped, the counter runs at BPM.
 - **Dest** switches the row's first two encoders to that LFO's **MIDI channel** and **CC
   number** (labels `Ch3`, `CC74`). Push again to go back. The CC it leaves behind is sent the
   center value, and so is the old port when the output changes.
@@ -108,14 +114,11 @@ A modulation bank for several synths: 16 LFOs, each with its own MIDI channel an
 
 **Page 5, settings:**
 1. output port. Push = restart all, which realigns synced LFOs to the downbeat.
-2. BPM for synced rates
+2. BPM: the E16's internal tempo, used for synced rates while transport is stopped
 3. push = all off
 
 By default only LFO 1 runs. Each page starts on its own MIDI channel (page 1 = channel 1 …), with
-the rows on CC 74, 71, 1 and 10, so a page is effectively one synth. There's no MIDI clock
-input for Lua (firmware 1.2), so synced rates follow the BPM setting.
-Over a long set they drift from other gear; push **Restart all** on a downbeat to realign. A
-future clock callback would only need to drive the beat counter.
+the rows on CC 74, 71, 1 and 10, so a page is effectively one synth.
 
 ## Chords
 
@@ -124,15 +127,17 @@ pad to play it. The header shows the set's name, and labels show chord names (mi
 use a lowercase root: `f#11` = F#m11; `s` = sus, `a9` = add9, `h7` = half-diminished,
 `?` = no simple name). The ring lights on the sounding pad.
 
-Turn any pad to set the **length**: Hold (the chord drones until the next pad), or 0.1–4 s.
-It's the same setting as encoder 4 on the settings page, and the pad's label shows it for a
-second. A sounding chord follows the change, so turning down to Hold keeps it going.
+Turn any pad to set the **length**: Held (the chord sounds while you hold the pad; the default),
+Ltch (it drones until the next pad), or 0.1–4 s. It's the same setting as encoder 4 on the
+settings page, and the pad's label shows it for a second. A sounding chord follows the change,
+so turning down to Ltch keeps it going.
 
 **Page 12: settings.**
 1. transpose −12…+12 (the root key; labels follow)
 2. octave ±2
 3. velocity
-4. gate: Hold, or 0.1–4 s. In Hold mode a chord sustains until the next pad; push the same pad to stop it.
+4. gate: Held, Ltch, or 0.1–4 s. Held plays from push to release. Ltch sustains a chord until the
+   next pad; push the same pad to stop it.
 5. strum 0–200 ms
 6. strum direction
 7. MIDI channel
@@ -181,7 +186,8 @@ values (`~64` = glide).
 4. CC number
 5. MIDI channel
 6. output port
-7. tempo trim
+
+Steps follow the E16's clock, and a glide moves once per clock tick (24 per quarter note).
 
 ## TB-3PO
 
@@ -221,24 +227,31 @@ shows pitch, colors mark accent, slide and the playhead, and labels show the not
 4. MIDI channel
 5. output port
 
-If anything goes wrong, TB-3PO keeps running: an error in its timer is caught, the header shows
-`ERR`, and the bottom 8 labels spell out the message for a few seconds.
+Steps follow the E16's clock. If anything goes wrong, TB-3PO keeps running: an error in its
+timer is caught, the header flashes `ERR`, and the message goes to the OXI App's console.
 
 The original `TB3PO.h` is Copyright (c) 2020 Logarhythm under the MIT license (the notice is kept
 in the file), and was modified by djphazer in Phazerville. This port is GPL-3.0.
 
-## Timing and limitations
+## Clock and transport
 
-- **No external sync.** Lua gets no MIDI clock, start/stop or time source. The only
-  timebase is `system.update()`, which the firmware calls once more than *rate* ms
-  have passed (`system.setUpdateRate(rate)`, 20–1000).
-- **Even steps, approximate tempo.** The sequencers pick a 20–40 ms rate so that a step is
-  exactly *K* ticks (at 120 BPM, 16ths are 5 × 25 ms). Steps are evenly spaced, and the
-  tempo is within about 1% (0.4% slow at 120 BPM). Main-loop latency makes it run a
-  little slower still; nudge it with `trim`.
-- Gates, strums, glides and LFOs move in ticks of 20–40 ms.
+Euclid, Mod Seq and TB-3PO step on the E16's clock (`clock.onPulse` at 24 ticks per quarter
+note), so steps land on the clock exactly, and triplet step sizes are whole ticks.
+
+- **Play** starts the E16's internal clock at the script's BPM, and **Stop** stops it. BPM is
+  the E16's internal tempo, so it also sets the Internal Clock alt action's tempo.
+- **External MIDI transport:** Start restarts the sequence from step 1, Continue resumes it, and
+  Stop stops it. While external transport runs, Play/Stop only silences the sequence or lets it
+  rejoin; the header shows the external tempo.
+- **Clock output:** Lua can't choose where the E16 sends MIDI clock. The internal clock uses the
+  output last chosen on the **Internal Clock alt action** (off until you set one). To send clock
+  to other gear, pick the output there, start and stop the clock once with the alt action, then
+  use the script's Play.
+- Loading a scene stops an internal clock that a script started.
+- Gates and strums are timed by `system.update()` every 10 ms. The LFOs update every 20 ms.
 - **Errors in `update` stop it silently.** If `system.update` raises an error, the firmware
-  disables updates, so the scripts clamp every value they read.
+  disables updates, so the scripts clamp every value they read. An error in a clock callback
+  only ends that call.
 
 ## Memory
 
@@ -248,24 +261,28 @@ Measured on firmware 1.2.0 with probe scenes (the tools are in `tools/`):
   (load)" plus the 11.9 KB base) must stay **≤ 42.5 KB**. Load probes load at 42.6 KB and fail at 43.5 KB.
 - **While running,** the ceiling is higher: `probe.lua` runs out at a Lua count of 42.3 KB, which is
   about **46.6 KB** modeled.
-- **Size** is not the constraint: 7,000-byte scripts load, and the app caps them at 8,000.
+- **Size** is not the constraint: 7,000-byte scripts load, and API 1.3.0 allows 8,192 bytes after
+  the app minifies them.
 
 | script | uploaded | load peak | margin |
 |---|---|---|---|
-| modseq | 3.1 KB | 29.6 KB | 12.9 KB |
-| euclid | 4.4 KB | 35.5 KB | 7.0 KB |
-| chords | 5.1 KB | 36.9 KB | 5.6 KB |
-| lfo | 5.4 KB | 40.9 KB | 1.6 KB |
-| tb3po | 6.1 KB | 42.5 KB | 0.1 KB |
+| modseq | 3.2 KB | ~30.0 KB | ~12.5 KB |
+| euclid | 4.5 KB | ~36.8 KB | ~5.7 KB |
+| chords | 5.3 KB | ~37.6 KB | ~4.9 KB |
+| lfo | 5.7 KB | ~41.8 KB | ~0.7 KB |
+| tb3po | 6.0 KB | 42.5 KB | 0.1 KB |
 | example step sequencer | 6.2 KB | 43.6 KB | −1.1 KB (fails to load) |
 
-All five scripts run on hardware. Scene variables are also limited: 32 per scene, and they outlive
-script changes, so `lfo.lua` and `tb3po.lua` stamp a layout version and clear old variables
-when it changes.
+The peaks marked ~ are for the clock versions. They're estimated from each script's growth in a
+64-bit build of `e16host`, because the 32-bit build needs Docker. TB-3PO was trimmed back to its
+old peak. Firmware 1.3 may also give Lua a different budget, so check the tight ones on hardware
+first. Scene variables are also limited: 32 per scene, and they outlive script changes, so
+`lfo.lua` and `tb3po.lua` stamp a layout version and clear old variables when it changes.
 
-If a scene shows its default title and labels and doesn't respond, the script didn't fit. To
-see errors on the device (there's no Lua Debug view), `tools/make_diag.py` makes a copy of a scene
-that prints any Lua error across the labels.
+If a scene shows its default title and labels and doesn't respond, the script didn't fit. With
+API 1.3.0, the OXI App's console (Scripts tab) shows load errors and `print` output.
+`tools/make_diag.py` is the firmware 1.2 alternative: a copy of a scene that prints any Lua error
+across the labels.
 
 ## E16 Lua notes
 
@@ -279,7 +296,7 @@ formats.
 Build Lua 5.4 with `#define LUA_32BITS 1` in `luaconf.h` so its numbers match the device,
 then run the suites from the repo root:
 
-    lua test/harness.lua euclid.lua
+    lua test/euclid_test.lua
     lua test/lfo_test.lua
     lua test/chords_test.lua     # after python3 tools/chordgen/build.py (it builds the sets into build/)
     lua test/modseq_test.lua
@@ -288,16 +305,20 @@ then run the suites from the repo root:
     python3 -m unittest discover -s tools/chordgen/tests -t tools/chordgen   # chord-set tools
 
 `test/fuzz.lua` matters on the E16: an error in `update()` silently stops a script's updates, so
-the fuzzer throws random presses, turns, page changes and variable edits at a script and fails if
-`update()` ever raises or a label is too long.
+the fuzzer throws random presses and releases, turns, page changes, variable edits and external
+transport at a script. It fails if `update()` or a clock callback ever raises, or a label is too long.
 
-`test/e16mock.lua` is a reusable mock of the E16 API. The suites check the following:
+`test/e16mock.lua` is a reusable mock of the E16 API 1.3.0. It includes the clock (internal
+and external transport, 24 ticks per quarter note, callbacks delivered on the next clock pass)
+and push release. The suites check the following:
 - Euclid: every E(k, n) against a reference Bjorklund
-- Chords: all 176 pads against their source voicings
+- Chords: all 176 pads against their source voicings, and Held / Ltch / timed gates
+- sequencers: steps on the clock, internal and external transport, Continue
 - all scripts: timing, label lengths, page switching, persistence, ignoring non-physical events, and no per-tick garbage
 
 `test/e16host.c` models the device heap: a 32-bit build, the heap_4 overhead, the firmware's
-library set, and generational GC. For example, with Docker:
+library set, and generational GC. While "playing" it calls `system.update` every 10 ms and
+`clock.onPulse` at 120 BPM. For example, with Docker:
 
     docker run --rm --platform linux/386 -v "$PWD":/w -w /w i386/alpine:3.20 sh -c '
       apk add -q build-base && cd lua-5.4.7/src && make -s liblua.a &&

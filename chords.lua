@@ -1,14 +1,15 @@
--- CHORDS: 176 chord pads on 11 pages, for the OXI E16 (firmware >= 1.2.0)
+-- CHORDS: 176 chord pads on 11 pages, for the OXI E16 (Lua API >= 1.3.0)
 --
 -- Pages 1-11: each page is one chord set (a mood), 16 hand-voiced chords.
---   Push a pad to play its chord (the E16 reports pushes on release). Turn any
---   pad to set the length (Hold, 0.1-4 s; the same setting as encoder 4 on
---   page 12); the pad's label shows it for a second. Labels show chord names, minor chords with a
+--   Push a pad to play its chord. Turn any pad to set the length (Held, Ltch,
+--   0.1-4 s; the same setting as encoder 4 on page 12); the pad's label shows
+--   it for a second. Labels show chord names, minor chords with a
 --   lowercase root (f#11 = F#m11, s = sus, a9 = add9, h7 = half-dim); the ring lights
 --   while the chord sounds (its fill follows the bass note). The header shows
 --   the set's name.
 -- Page 12, settings: 1 transpose (root key, -12..+12) | 2 octave | 3 velocity |
---   4 gate (Hold = until the next pad; pushing the same pad again stops) |
+--   4 gate (Held = while the pad is pushed; Ltch = until the next pad, and
+--   pushing the same pad again stops; or 0.1-4 s) |
 --   5 strum (ms between notes) | 6 strum direction | 7 MIDI channel |
 --   8 output port. Push encoder 1 = all notes off.
 --
@@ -69,21 +70,21 @@ local T = [=[Cinematic|Chill House|Gospel Soul|Neo Soul|Lofi R&B|Indie Jazz|Detr
 local SUF = {"", "m", "o", "+", "s2", "s4", "6", "m6", "7", "M7", "m7", "mM7", "h7", "o7", "7s", "a9", "ma9", "69", "m69", "9", "M9", "m9", "9s", "11", "m11", "M11", "13", "m13", "M13", "7b9", "7#9", "M7#11", "m7b9", "5"}
 -- END CHORD DATA
 
-local DT = 20.1            -- real update period: firmware fires after > 20 ms
+local DT = 10.1            -- real update period: firmware fires after > 10 ms
 local FULL = 16383
 local C_ON, C_HIT = 0, 50  -- LED color: index into the app's 100-color palette
 local SETP = 12            -- settings page; pads are on pages 1-11
 local NN = "C C#D D#E F F#G G#A A#B "
 
--- Settings (page 12, ids 33-40). Gate is in 100 ms (0 = Hold), strum in 10 ms.
+-- Settings (page 12, ids 33-40). Gate is in 100 ms (-1 = Held, 0 = Ltch), strum in 10 ms.
 local SN = {"tr", "oct", "vel", "gate", "strum", "dir", "ch", "out"}
-local SV = {0, 0, 100, 0, 0, 0, 1, 0}
-local LO = {-12, -2, 1, 0, 0, 0, 1, 0}
+local SV = {0, 0, 100, -1, 0, 0, 1, 0}
+local LO = {-12, -2, 1, -1, 0, 0, 1, 0}
 local HI = {12, 2, 127, 40, 20, 1, 16, 15}
 
 local H, nh = {}, 0        -- notes sounding
 local Q, qi, qn, qt = {}, 1, 0, 0   -- strum queue: notes, next, count, ms to next
-local cur, left = 0, 0     -- sounding pad (1-176); ms until release (0 = hold)
+local cur, left = 0, 0     -- sounding pad (1-176); ms until release (<= 0: none)
 local title, shown         -- pending / displayed header text
 local flash = 0            -- ms left showing the length on a pad label
 
@@ -91,7 +92,7 @@ local function clamp(v, lo, hi)
   return v < lo and lo or v > hi and hi or v
 end
 
-local function glab(v) return v == 0 and "Hold" or v // 10 .. "." .. v % 10 .. "s" end
+local function glab(v) return v < 0 and "Held" or v == 0 and "Ltch" or v // 10 .. "." .. v % 10 .. "s" end
 
 local function nname(n)
   local k = n % 12 * 2 + 1
@@ -177,7 +178,7 @@ local function play(k)
   local was = cur
   offAll()
   drawPad(was)
-  if was == k and SV[4] == 0 then return end   -- Hold: same pad again stops
+  if was == k and SV[4] == 0 then return end   -- Ltch: same pad again stops
   local s, e = tok(k)
   if not s or s + 1 >= e then return end
   qn = 0
@@ -224,7 +225,7 @@ function controller.onEncoderTurn(e)
   if id <= 16 then
     SV[4] = clamp(SV[4] + (d > 0 and 1 or -1), LO[4], HI[4])
     var.set("gate", SV[4])
-    if cur > 0 then left = SV[4] * 100 end   -- the sounding chord follows: Hold keeps it
+    if cur > 0 then left = SV[4] * 100 end   -- the sounding chord follows: Held/Ltch keep it
     slots.update(id, glab(SV[4]))
     flash = 1000
     return
@@ -244,6 +245,16 @@ function controller.onEncoderPress(e)
   end
   if e.id < 17 or e.id > 32 or e.page >= SETP then return end
   play((e.page - 1) * 16 + e.id - 16)
+end
+
+-- Held: letting go of the sounding pad releases its chord. (id and page are
+-- the ones from the push.)
+function controller.onEncoderRelease(e)
+  local k = (e.page - 1) * 16 + e.id - 16
+  if SV[4] < 0 and e.id >= 17 and e.id <= 32 and k == cur then
+    offAll()
+    drawPad(k)
+  end
 end
 
 function page.onPageChange(prev, curr)
@@ -268,6 +279,6 @@ function page.onInit()
   for id = 1, 40 do
     if id < 17 or id > 32 then controller.set(id, {manual = true, v = 8192}) end
   end
-  system.setUpdateRate(20)
+  system.setUpdateRate(10)
   drawAll()
 end

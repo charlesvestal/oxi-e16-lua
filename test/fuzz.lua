@@ -13,8 +13,13 @@ local ok, err = pcall(function()
       local pg = math.random(pages)
       E.page = pg
       local e = math.random(16)
-      controller.onEncoderPress{id = (pg == pages and pages > 1) and 48 + e or 16 + e, index = e, page = pg,
-        value = 8192, scaled = 64}
+      local id = (pg == pages and pages > 1) and 48 + e or 16 + e
+      controller.onEncoderPress{id = id, index = e, page = pg, value = 8192, scaled = 64}
+      if controller.onEncoderRelease and math.random(4) > 1 then      -- usually let go soon
+        E.run(math.random(0, 200))
+        controller.onEncoderRelease{id = id, index = e, page = pg, value = 8192, scaled = 64,
+          held_ms = math.random(0, 3000)}
+      end
     elseif r <= 80 then
       local pg = math.random(pages)
       E.page = pg
@@ -29,6 +34,12 @@ local ok, err = pcall(function()
       local n = 0
       for name in pairs(E.store) do n = n + 1; if math.random(n) == 1 then k = name end end
       if k then E.store[k] = math.random(-50, 400); page.onVarChange(k) end
+    elseif r <= 92 then                 -- external transport, and internal tempo changes
+      local x = math.random(4)
+      if x == 1 then E.extStart(math.random(20, 300))
+      elseif x == 2 then E.extStop()
+      elseif x == 3 then E.extContinue()
+      else clock.setInternalBpm(math.random(20, 300)) end
     end
     local dt = math.random(0, 300)
     E.run(dt)
@@ -39,5 +50,7 @@ local ok, err = pcall(function()
     end
   end
 end)
-print(("%-12s %s"):format(script, ok and ("ok, " .. #E.sent .. " messages, update still running: " .. tostring(E.rate > 0)) or ("ERROR: " .. err)))
+ok = ok and E.cerrs == 0 or false
+print(("%-12s %s"):format(script, ok and ("ok, " .. #E.sent .. " messages, update still running: " .. tostring(E.rate > 0))
+  or ("ERROR: " .. tostring(err or (E.cerrs .. " clock callback errors")))))
 os.exit(ok and E.rate > 0 and 0 or 1)

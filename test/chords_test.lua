@@ -36,6 +36,9 @@ local function pad(pg, i)
   E.page = pg
   controller.onEncoderPress{id = 16 + i, index = i, page = pg, value = 8192, scaled = 64}
 end
+local function lift(pg, i, held)
+  controller.onEncoderRelease{id = 16 + i, index = i, page = pg, value = 8192, scaled = 64, held_ms = held or 100}
+end
 -- turn setting k by n detents (one step each)
 local function set(k, n)
   E.page = 12
@@ -60,6 +63,8 @@ end
 
 E.load(SCRIPT)
 E.run(100)
+check(E.store.gate == -1 and E.rate == 10, "default gate is Held; 10 ms updates")
+E.store.gate = 0; page.onVarChange("gate")  -- most tests below use Ltch
 check(E.title == title(SETS[1]), "page 1 title is the set name (" .. E.title .. ")")
 check(E.labels[1] ~= nil and E.labels[16] ~= nil, "page 1 labels: " .. table.concat(E.labels, " ", 1, 16))
 
@@ -89,7 +94,7 @@ for pg = 1, #SETS do want[pg] = title(SETS[pg]) end
 check(table.concat(titles, ",") == table.concat(want, ","), "titles per page: " .. table.concat(titles, ", "))
 E.show(1); E.run(60)
 
--- hold: a new pad releases the previous chord first
+-- latch: a new pad releases the previous chord first
 E.sent = {}
 pad(1, 1); E.run(40)
 local first = #E.sent
@@ -101,12 +106,12 @@ end
 check(offs == first, "switching pads releases all notes of the previous chord (" .. offs .. "/" .. first .. ")")
 check(E.rings[2].c == 50 and E.rings[1].c == 0, "ring lights on the sounding pad only")
 pad(1, 2)
-check(E.rings[2].c == 0, "pushing the sounding pad again stops it (hold)")
+check(E.rings[2].c == 0, "pushing the sounding pad again stops it (latch)")
 
 -- settings page
 E.show(12); E.run(60)
 check(E.title == "Chord settings", "settings title")
-check(E.labels[1] == "T0" and E.labels[3] == "V100" and E.labels[4] == "Hold" and E.labels[6] == "Up",
+check(E.labels[1] == "T0" and E.labels[3] == "V100" and E.labels[4] == "Ltch" and E.labels[6] == "Up",
   "settings labels: " .. table.concat(E.labels, " ", 1, 8))
 
 -- gate 0.5 s
@@ -186,7 +191,9 @@ end
 E.show(1); E.run(60)
 local l5 = E.labels[5]
 len(-40)
-check(E.labels[5] == "Hold", "pad knob: length Hold (" .. E.labels[5] .. ")")
+check(E.labels[5] == "Held", "pad knob: length bottoms out at Held (" .. E.labels[5] .. ")")
+len(1)
+check(E.labels[5] == "Ltch", "pad knob: then Ltch (" .. E.labels[5] .. ")")
 E.run(1200)
 check(E.labels[5] == l5, "the pad's label comes back after a second (" .. E.labels[5] .. ")")
 len(5)
@@ -203,13 +210,39 @@ end
 check(on > 0 and offs() == on, "a 0.5 s length releases the chord (" .. on .. " on, " .. offs() .. " off)")
 len(-5)
 E.sent = {}; pad(1, 3); E.run(2000)
-check(#ons() > 0 and offs() == 0, "Hold keeps the chord sounding")
+check(#ons() > 0 and offs() == 0, "Ltch keeps the chord sounding")
 len(3)
 E.run(400)
-check(offs() == #ons(), "turning up from Hold releases the sounding chord")
+check(offs() == #ons(), "turning up from Ltch releases the sounding chord")
 E.show(12)
 check(E.labels[4] == "0.3s", "the settings page shows the same length (" .. E.labels[4] .. ")")
 len(-3)
+
+-- Held: the chord sounds from push to release
+E.show(1); len(-1)
+check(E.store.gate == -1, "Held")
+E.sent = {}; pad(1, 4); E.run(1500)
+check(#ons() > 0 and offs() == 0, "Held: sounding while the pad is down")
+lift(1, 4, 1500)
+check(offs() == #ons() and E.rings[4].c == 0, "Held: release stops the chord and its ring")
+E.sent = {}; pad(1, 5); E.run(20)
+local first = #ons()
+lift(1, 5, 20); E.run(500)
+check(first > 0 and offs() == #ons(), "a quick tap plays and releases")
+set(5, 5)                                     -- strum 50 ms: release mid-strum
+E.show(1)
+E.sent = {}; pad(1, 6); E.run(60); lift(1, 6, 60); E.run(1000)
+check(#ons() >= 1 and #ons() < 4 and offs() == #ons(), "releasing mid-strum stops the rest (" .. #ons() .. " played)")
+set(5, -5)
+E.show(1)
+E.sent = {}
+pad(1, 7); E.run(100); pad(1, 8); E.run(100)  -- roll onto a second pad
+lift(1, 7, 200)
+check(offs() > 0 and E.rings[8].c ~= 0, "releasing an older pad leaves the newer chord sounding")
+lift(1, 8, 100)
+check(offs() == #ons(), "releasing the sounding pad stops it")
+E.sent = {}; pad(12, 1); lift(12, 1)          -- settings-page push: no pad
+check(true, "releases on the settings page are ignored")
 
 -- ignores foreign events
 controller.onEncoderTurn{id = 255, index = 1, page = 3, increment = 1, value = 0, scaled = 0, is_held = false}

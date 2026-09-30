@@ -14,16 +14,17 @@ local function pattern()                  -- note-ons of one 16-step bar, "note@
   E.sent = {}
   local t0 = E.now
   E.show(1); E.press(24)                  -- play
-  E.run(125.5 * 16 - 1)
+  E.run(125 * 16 - 1)
   E.press(24)                             -- stop
   local t = {}
-  for _, m in ipairs(ons()) do t[#t + 1] = m.d1 .. "@" .. math.floor((m.t - t0) / 125.5 + 0.5) end
+  for _, m in ipairs(ons()) do t[#t + 1] = m.d1 .. "@" .. math.floor((m.t - t0) / 125 + 0.5) end
   return table.concat(t, " ")
 end
 local function notes(p) local c = 0; for _ in p:gmatch("@") do c = c + 1 end; return c end
 
 E.store.seed, E.store.ver = 0x3F2A, 2        -- a known seed (current layout)
 E.load("tb3po.lua")
+check(E.listening and E.res == 96 and E.bpm == 120 and E.rate == 10, "clock at 24 ticks per quarter, tempo 120, 10 ms updates")
 E.run(60)
 check(E.title == "Gen 3F2A", "first run generates from the seed (" .. E.title .. ")")
 E.run(1000)
@@ -151,19 +152,21 @@ E.sent = {}
 E.press(19); E.run(1000)
 check(#ons() == 0, "encoder 3 push no longer starts playback")
 
--- an error is shown, and the script keeps running
+-- errors: the device logs a clock-callback error and keeps ticking; an error
+-- in update flashes ERR (and prints it) instead of stopping updates
 E.press(24); E.run(500)
-local real = midi.sendMidi
+local real, st = midi.sendMidi, page.setTitle
+local sawERR = false
+page.setTitle = function(t) if t == "ERR" then sawERR = true end st(t) end
 midi.sendMidi = function() error("boom test") end
 E.run(1000)
-local msg = table.concat(E.labels, "", 9, 16)
-check(E.title == "ERR" and msg:find("boom test"), "error shown: header '" .. E.title .. "', labels '" .. msg .. "'")
-midi.sendMidi = real
+midi.sendMidi, page.setTitle = real, st
+check(E.cerrs > 0 and sawERR and E.rate > 0, "errors logged / flashed, updates keep running (" .. E.cerrs .. " clock errors)")
 E.sent = {}
 E.run(1000)
-check(#ons() > 0 and E.rate > 0, "keeps playing after the error clears")
-E.run(5000)
-check(E.title:match("^TB%-3PO") and not table.concat(E.labels, "", 9, 16):find("boom"), "message clears, strip returns")
+check(#ons() > 0, "keeps playing after the error clears")
+E.run(3000)
+check(E.title:match("^TB%-3PO"), "header returns (" .. E.title .. ")")
 E.press(24)
 
 -- live controls
@@ -177,17 +180,29 @@ check(E.labels[6] == "T+3", "transpose")
 E.turn(7, 8)
 check(E.labels[7] == "M33", "mutate amount with acceleration")
 E.turn(8, 8)
-check(E.labels[8] == "128" and E.rate > 0, "BPM with acceleration")
+check(E.labels[8] == "128" and E.bpm == 128, "BPM with acceleration sets the internal clock")
 
 -- strip
 E.press(24)
-E.run(125.5 * 3)
+E.run(125 * 3)
 local labs = {}
 for i = 9, 16 do labs[#labs + 1] = E.labels[i] end
 local play = false
 for i = 9, 16 do if E.rings[i] and E.rings[i].c == 50 then play = true end end
 check(#labs == 8 and play, "strip labels + playhead: " .. table.concat(labs, " "))
 E.press(24)
+
+-- external transport: Start plays step 1 at its tempo, Continue resumes, Stop releases
+E.show(1)
+E.turn(8, -8)                             -- back to 120 internal
+E.sent = {}
+E.extStart(100)
+E.run(600 * 4 - 1)                        -- 16 steps at 100 BPM
+check(#ons() > 0 and E.title == "TB-3PO > 100", "follows external transport (" .. E.title .. ")")
+E.extStop(); E.run(30)
+local hang2 = 0
+for _, m in ipairs(E.sent) do if m.st == 0x90 then hang2 = hang2 + (m.d2 > 0 and 1 or -1) end end
+check(hang2 == 0 and E.title == "TB-3PO | 120", "external Stop releases the note (" .. E.title .. ")")
 
 -- settings page
 E.show(2)

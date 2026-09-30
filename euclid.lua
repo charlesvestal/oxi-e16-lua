@@ -1,21 +1,21 @@
--- EUCLID: 4-track Euclidean MIDI sequencer for the OXI E16 (firmware >= 1.2.0)
+-- EUCLID: 4-track Euclidean MIDI sequencer for the OXI E16 (Lua API >= 1.3.0)
 --
 -- Page 1, one track per row:     Len   Puls   Rot   Note
 --   turn:  Len 1-32 | Puls 0-Len | Rot -(Len-1)..+(Len-1) | Note 0-127
 --   push:  Mute     | Invert     | Play/Stop             | Resync all tracks
 --
--- Page 2, settings (encoders 1-6; push encoder 1 = Play/Stop):
+-- Page 2, settings (encoders 1-5; push encoder 1 = Play/Stop):
 --   BPM 20-300 | Step 1/4 1/8 8T 1/16 16T 1/32 | Gate 10-990 ms |
---   MIDI channel 1-16 | Output port (0 = all) | Trim (0.1% tempo, + = faster)
+--   MIDI channel 1-16 | Output port (0 = all)
 --
 -- Everything is stored in scene variables (Scene settings > Script Variables):
---   bpm div gate ch out trim, and L/P/R/N/M/I 1-4 for the tracks.
+--   bpm div gate ch out, and L/P/R/N/M/I 1-4 for the tracks.
 --
--- Timing: Lua on the E16 has no MIDI clock input and no time source. The
--- firmware calls system.update() once more than `rate` ms have passed (20-1000).
--- The rate is chosen so each step is a whole number of ticks: steps are evenly
--- spaced, and the tempo is within ~1% (plus main-loop latency, which makes it
--- run slightly slow). Use "trim" to match a reference clock.
+-- Timing: steps follow the E16's clock (24 ticks per quarter note). Play
+-- starts the internal clock at BPM; with external MIDI transport running, the
+-- tracks follow it instead (Start restarts them, Continue resumes), and Play/Stop
+-- only silences or rejoins them. The header shows the tempo being followed.
+-- Gates are timed in ms by system.update().
 --
 -- Memory: the Lua heap is ~40 KB including the VM (~12 KB). Bytecode dominates
 -- script cost, so the code is table-driven (few functions) and allocates
@@ -60,9 +60,8 @@
 --@assign id=35 abbr="Gate" name="Gate ms"    l=0 h=127 manual=true g=19
 --@assign id=36 abbr="Chan" name="MIDI channel" l=0 h=127 manual=true g=20
 --@assign id=37 abbr="Out"  name="Output port" l=0 h=127 manual=true g=21
---@assign id=38 abbr="Trim" name="Tempo trim" l=0 h=127 manual=true g=22
 
-local DT = 20.1            -- real update period: firmware fires after > rate ms
+local DT = 10.1            -- real update period: firmware fires after > 10 ms
 local FULL = 16383         -- full LED ring
 local C_ON, C_HIT, C_MUTE = 0, 50, 75 -- LED color: index into the app's 100-color palette
 
@@ -73,15 +72,14 @@ local POS = {0, 0, 0, 0}   -- next step per track (0-based)
 local LEFT = {0, 0, 0, 0}  -- ms until note-off (0 = silent)
 local idx = {}             -- script id -> encoder index (learned from events)
 local spage, gpage = 1, 2  -- pattern page and settings page (learned)
-local run, cnt = false, 0  -- transport; ticks since the last step
-local K = 5                -- update ticks per step
+local run, tp = false, nil -- playing; running clock source (nil = stopped, 0 = external)
 local bpm, gate, st, out   -- cached settings (st = note-on status)
 
--- Settings (page 2 encoders 1-6, ids 33-38): var name, default, range
-local SET = {"bpm", "div", "gate", "ch", "out", "trim"}
-local DEF = {120, 4, 60, 10, 0, 0}
-local LO = {20, 1, 10, 1, 0, -99}
-local HI = {300, 8, 990, 16, 15, 99}
+-- Settings (page 2 encoders 1-5, ids 33-37): var name, default, range
+local SET = {"bpm", "div", "gate", "ch", "out"}
+local DEF = {120, 4, 60, 10, 0}
+local LO = {20, 1, 10, 1, 0}
+local HI = {300, 8, 990, 16, 15}
 local SV = {}              -- current (clamped) settings values
 local DIVS = {1, 2, 3, 4, 6, 8}
 local DL = {"1/4", "1/8", "8T", "1/16", "D5", "16T", "D7", "1/32"}
@@ -122,20 +120,9 @@ local function pull()
     end
   end
   for t = 1, 4 do fix(t) end
-  for k = 1, 6 do SV[k] = clamp(g(SET[k]), LO[k], HI[k]) end
+  for k = 1, 5 do SV[k] = clamp(g(SET[k]), LO[k], HI[k]) end
   bpm = SV[1]
-  local ms = 60000 / (bpm * SV[2]) / (1 + SV[6] / 1000)
-  -- A step is exactly K update ticks, so steps are evenly spaced. Pick the
-  -- 20-40 ms rate (fine enough for gates) whose K ticks best match the step;
-  -- the tempo error is at most ~1%, and "trim" nudges it.
-  local best, rate = 1e9, 20
-  for k = -(-ms // 40), ms // 20 do
-    local p = clamp((ms / k + 0.4) // 1, 20, 1000)
-    local e = math.abs(k * (p + 0.1) - ms)
-    if e < best then best, rate, K = e, p, k end
-  end
-  DT = rate + 0.1
-  system.setUpdateRate(rate)
+  clock.setInternalBpm(bpm)
   gate, st, out = SV[3], 0x8F + SV[4], SV[5]
 end
 
@@ -177,16 +164,15 @@ local function drawAll(pg)
   pg = pg or controller.getPage()
   for t = 1, 4 do draw(t, true, pg) end
   if pg == gpage then
-    for k = 1, 6 do
+    for k = 1, 5 do
       local v, i = SV[k], idx[k + 32] or k
       leds.updateByIndex(i, (v - LO[k]) * FULL // (HI[k] - LO[k]), C_ON)
       slots.update(i, k == 1 and "" .. v or k == 2 and DL[v] or k == 3 and "G" .. v
-        or k == 4 and "Ch" .. v or k == 5 and (v == 0 and "All" or "O" .. v)
-        or (v > 0 and "T+" or "T") .. v)
+        or k == 4 and "Ch" .. v or (v == 0 and "All" or "O" .. v))
     end
   end
   -- Title freeze workaround: reset now, set the new text on the next update.
-  local s = (run and "EUC > " or "EUC | ") .. bpm
+  local s = (run and "EUC > " or "EUC | ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or bpm)
   if s ~= shown then
     page.resetTitle()
     title, shown = s, s
@@ -221,18 +207,43 @@ function system.update()
       if l <= DT then off(t); draw(t) else LEFT[t] = l - DT end
     end
   end
-  if run then
-    cnt = cnt + 1
-    if cnt >= K then cnt = 0; tick() end
-  end
 end
 
--- Turn ids 1-16 edit V, 33-38 the settings; push ids 17-32 are mute, invert,
+local function silence()
+  for t = 1, 4 do off(t) end
+  midi.sendCC(out, st - 0x90, 123, 0)
+end
+
+-- Transport: a fresh start plays step 1 on its first tick; Continue resumes.
+function clock.onStart(s)
+  tp, run = s, true
+  for t = 1, 4 do off(t); POS[t] = 0 end
+  drawAll()
+end
+
+function clock.onContinue(s)
+  tp, run = s, true
+  drawAll()
+end
+
+function clock.onStop()
+  if run then silence() end
+  tp, run = nil, false
+  drawAll()
+end
+
+function clock.onPulse(b, p)
+  if not run then return end
+  if p % (24 // SV[2]) == 0 then tick() end
+  if tp == 0 and p % 96 == 0 then drawAll() end   -- external tempo in the header, once a bar
+end
+
+-- Turn ids 1-16 edit V, 33-37 the settings; push ids 17-32 are mute, invert,
 -- play/stop, resync, and 49 is play/stop on the settings page.
 function controller.onEncoderTurn(e)
   local id, d = e.id, e.increment
   -- 0 = not a physical turn (recorder, random, group); 255 = non-script control
-  if d == 0 or id < 1 or id > 38 or id > 16 and id < 33 then return end
+  if d == 0 or id < 1 or id > 37 or id > 16 and id < 33 then return end
   idx[id] = e.index
   controller.set(id, "v", 8192)       -- keep manual encoders off their end stops
   if id > 32 then
@@ -269,11 +280,15 @@ function controller.onEncoderPress(e)
     V[e.id] = 1 - V[e.id]
     off(t)
     fix(t)
-  else
+  elseif k == 3 then                  -- resync: every track back to its step 1
     for i = 1, 4 do off(i); POS[i] = 0 end
-    cnt = 0
-    if k == 2 then run = not run end
-    if run then tick() else midi.sendCC(out, st - 0x90, 123, 0) end
+  elseif run then                     -- stop; external transport keeps running without us
+    run = false
+    silence()
+    if tp and tp > 0 then clock.stopInternal(); tp = nil end
+  else                                -- join a running clock, or start the internal one
+    if not tp then clock.startInternal(); tp = 2 end
+    run = true
   end
   drawAll()
 end
@@ -295,10 +310,12 @@ function page.onVarChange()
 end
 
 function page.onInit()
-  for k = 1, 6 do var.register(SET[k], "int", DEF[k]) end
+  for k = 1, 5 do var.register(SET[k], "int", DEF[k]) end
   pull()
+  clock.listen(true, 96)
+  system.setUpdateRate(10)
   -- manual: the script owns the values (the scene file may not carry the flag)
-  for id = 1, 38 do
+  for id = 1, 37 do
     if id < 17 or id > 32 then controller.set(id, {manual = true, v = 8192}) end
   end
   drawAll()
@@ -306,5 +323,5 @@ function page.onInit()
   collectgarbage()
   local kb = math.floor(collectgarbage("count"))
   print("euclid: Lua heap " .. kb .. " KB")
-  title, memT = "EUC heap " .. kb .. "KB", 75
+  title, memT = "EUC heap " .. kb .. "KB", 150
 end

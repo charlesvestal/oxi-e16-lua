@@ -1,4 +1,4 @@
--- Mock of the OXI E16 Lua API (firmware 1.2.0) for desktop tests.
+-- Mock of the OXI E16 Lua API (v1.3.0) for desktop tests.
 -- Run with a Lua 5.4 built with LUA_32BITS=1 so numbers match the device.
 --
 --   local E = dofile("test/e16mock.lua")
@@ -6,11 +6,19 @@
 --   E.turn(1, 1); E.press(17)  -- ids follow the scene convention:
 --                              -- page 1 turns 1-16 / pushes 17-32,
 --                              -- page 2 turns 33-48 / pushes 49-64
---   E.run(1000)                -- advance time, calling system.update()
+--   E.run(1000)                -- advance time, calling system.update() and the clock
+--   E.release(17, 300)         -- let go of a push after 300 ms
+--   E.extStart(128); E.extStop(); E.extContinue()   -- external MIDI transport
 --   E.check(ok, "message"); E.done()
 
 local M = {now = 0, rate = 0, sent = {}, rings = {}, labels = {}, title = "",
-  store = {}, page = 1, fails = 0}
+  store = {}, page = 1, fails = 0, lastU = 0,
+  -- clock: internal and external tempo, running source (nil = stopped),
+  -- MIDI tick count (24 per quarter), time of the next tick, queued callbacks
+  bpm = 120, extBpm = 120, tp = nil, tick = 0, nextPulse = 0, q = {},
+  at = 0, atTick = 0,         -- time and tick the pulse grid is anchored at
+  listening = false, res = 16, hold = 0,
+  cerrs = 0}                  -- clock callback errors (logged; listening continues)
 
 function M.check(ok, msg)
   if ok then print("ok   " .. msg) else M.fails = M.fails + 1; print("FAIL: " .. msg) end
@@ -33,6 +41,7 @@ midi = {
   end,
   sendPC = function() end,
   sendSysex = function() end,
+  listen = function() end,
 }
 leds = {
   updateByIndex = function(i, v, c)
@@ -66,6 +75,8 @@ page = {
 controller = {
   getPage = function() return M.page end,
   set = function() end, setByIndex = function() end, setControls = function() end,
+  get = function() end,
+  setHoldTime = function(ms) M.hold = ms == 0 and 0 or math.max(30, math.min(3000, ms)) end,
 }
 var = {
   register = function(n, ty, d)
@@ -83,24 +94,118 @@ var = {
   deleteAll = function() M.store = {} end,
 }
 system = {
-  setUpdateRate = function(ms) M.rate = (ms >= 20 and ms <= 1000) and ms // 1 or 0 end,
+  setUpdateRate = function(ms)
+    M.rate = (ms >= 5 and ms <= 1000) and ms // 1 or 0
+    M.lastU = M.now
+  end,
 }
 
+-- Clock: transport callbacks are queued and delivered on the next clock pass
+-- (the next M.run), before that pass's first pulse, as the guide describes.
+local function cb(name, ...) M.q[#M.q + 1] = {name, ...} end
+-- A clock callback error ends that call only, as on the device (it's logged).
+local function safe(f, ...)
+  local ok, err = pcall(f, ...)
+  if not ok then
+    if M.cerrs == 0 then print("clock callback error: " .. tostring(err)) end
+    M.cerrs = M.cerrs + 1
+  end
+end
+local function flush()
+  local q = M.q
+  if #q == 0 then return end                     -- (no garbage per pass)
+  M.q = {}
+  for _, e in ipairs(q) do
+    if M.listening and clock[e[1]] then safe(clock[e[1]], table.unpack(e, 2)) end
+  end
+end
+local RES = {[4] = true, [8] = true, [16] = true, [32] = true, [96] = true}
+clock = {
+  listen = function(on, res)
+    assert(type(on) == "boolean", "clock.listen needs a boolean")
+    M.listening, M.res = on, RES[res] and res or 16
+  end,
+  startInternal = function()
+    if M.tp and M.tp > 0 then return end        -- already running: unchanged
+    if M.tp == 0 then cb("onStop", 0) end        -- takes over from external transport
+    M.tp, M.tick, M.nextPulse, M.at, M.atTick = 2, 0, M.now, M.now, 0
+    cb("onStart", 2)
+  end,
+  stopInternal = function()
+    if M.tp and M.tp > 0 then M.tp = nil; cb("onStop", 2) end
+  end,
+  setInternalBpm = function(b)
+    assert(type(b) == "number", "setInternalBpm needs a number")
+    if b >= 20 and b <= 300 then
+      if M.tp and M.tp > 0 then M.at, M.atTick = M.nextPulse, M.tick end   -- re-anchor the grid
+      M.bpm = b
+    end
+  end,
+  getBpm = function() return M.tp == 0 and M.extBpm or M.tp and M.bpm or 1 end,
+  getPosition = function(res)
+    return M.tp and M.tick // (96 // (RES[res] and res or 16)) or 0
+  end,
+}
+-- External transport. Start and Continue don't replace a running internal clock;
+-- Stop stops any clock (and repeats reach the script even when stopped).
+function M.extStart(bpm)
+  M.extBpm = bpm or M.extBpm
+  if M.tp and M.tp > 0 then return end
+  M.tp, M.tick, M.nextPulse, M.at, M.atTick = 0, 0, M.now, M.now, 0
+  cb("onStart", 0)
+end
+function M.extContinue()
+  if M.tp then return end
+  M.tp, M.nextPulse, M.at, M.atTick = 0, M.now, M.now, M.tick
+  cb("onContinue", 0)
+end
+function M.extStop()
+  M.tp = nil
+  cb("onStop", 0)
+end
+
+local function pulse()
+  local every = 96 // M.res
+  if M.listening and M.tick % every == 0 then
+    local t = M.tick
+    local b = t % 24 == 0 and 4 or t % 12 == 0 and 8 or t % 6 == 0 and 16 or t % 3 == 0 and 32 or 96
+    if clock.onPulse then safe(clock.onPulse, b, t // every, M.tp) end
+  end
+  M.tick = M.tick + 1
+  -- from the anchor, so float32 time doesn't drift
+  M.nextPulse = M.at + (M.tick - M.atTick) * 60000 / ((M.tp == 0 and M.extBpm or M.bpm) * 24)
+end
+
 -- Load (or reload, like a scene re-entry) a script. Vars survive in M.store.
+-- Loading turns clock listening off and stops an internal clock Lua started.
 function M.load(path)
   M.sent, M.rings, M.labels, M.page = {}, {}, {}, 1
+  M.listening, M.hold, M.q = false, 0, {}
+  if M.tp == 2 then M.tp = nil end
+  M.lastU = M.now
   dofile(path)
   page.onInit()
 end
 
 -- Advance time by ms, calling system.update() the way the firmware does
--- (once more than `rate` ms have passed: rate + 0.1 ms on a 10 kHz tick).
+-- (once more than `rate` ms have passed: rate + 0.1 ms on a 10 kHz tick),
+-- and the clock callbacks (24 ticks per quarter note while transport runs).
 function M.run(ms)
   local stop = M.now + ms
-  while M.rate > 0 and M.now + M.rate + 0.1 <= stop do
-    M.now = M.now + M.rate + 0.1
-    local ok, err = pcall(system.update)
-    if not ok then M.rate = 0; error("update() raised (firmware would disable updates): " .. err) end
+  while true do
+    flush()
+    local tu = M.rate > 0 and M.lastU + M.rate + 0.1 or math.huge
+    local tc = M.tp and M.nextPulse or math.huge
+    local t = math.min(tu, tc)
+    if t > stop then break end
+    M.now = math.max(M.now, t)
+    if tc <= tu then
+      pulse()
+    else
+      M.lastU = t
+      local ok, err = pcall(system.update)
+      if not ok then M.rate = 0; error("update() raised (firmware would disable updates): " .. err) end
+    end
   end
   if M.now < stop then M.now = stop end
 end
@@ -116,9 +221,22 @@ function M.turn(id, inc)
     value = 8192, scaled = 64, is_held = false}
 end
 
+-- A push fires on touchdown; release follows (held_ms), and hold after the
+-- time armed with controller.setHoldTime if the push lasts that long.
 function M.press(id)
   local index, pg = where(id > 48 and id - 32 or id - 16, 0)
   controller.onEncoderPress{id = id, index = index, page = pg, value = 8192, scaled = 64}
+end
+
+function M.release(id, held)
+  local index, pg = where(id > 48 and id - 32 or id - 16, 0)
+  held = held or 100
+  if M.hold > 0 and held >= M.hold and controller.onEncoderHold then
+    controller.onEncoderHold{id = id, index = index, page = pg, value = 8192, scaled = 64}
+  end
+  if controller.onEncoderRelease then
+    controller.onEncoderRelease{id = id, index = index, page = pg, value = 8192, scaled = 64, held_ms = held}
+  end
 end
 
 function M.show(pg)

@@ -181,8 +181,8 @@ def main():
 
     src = open(args.script, encoding="utf-8").read()
     code = rename_locals(minify(src))
-    if len(code.encode()) > 7900:     # the app caps scripts at 8000; 7000-byte probes load (fw 1.2)
-        sys.exit(f"script is {len(code)} bytes; the OXI App caps scripts at 8000")
+    if len(code.encode()) > 8192:     # the device's script buffer (API 1.3.0)
+        sys.exit(f"script is {len(code)} bytes; the E16 holds 8192")
     name = os.path.splitext(os.path.basename(args.script))[0]
 
     scene = json.load(open(args.template, encoding="utf-8"))
@@ -191,6 +191,15 @@ def main():
     scene["code"] = {"code": code, "fullScript": src.replace("\n", "\r\n"), "scriptName": name}
 
     wiring = [(pg, 0) for pg in range(args.pad_pages)] + [(args.settings_page - 1, 1)]
+    # Pages the script doesn't use are blanked, so nothing from the template carries over.
+    for pg, page in enumerate(scene["pages"]):
+        if pg in dict(wiring):
+            continue
+        page["title"] = f"P.{pg + 1}"
+        for enc in page["encoders"]:
+            enc["name"] = enc["abbr"] = ""
+            for act in enc["turn_actions"] + [enc["push_action"]]:
+                act["type"], act["scriptId"] = 0, 0
     for pg, block in wiring:
         for e in range(1, 17):
             enc = scene["pages"][pg]["encoders"][e - 1]

@@ -7,7 +7,7 @@
  *    8-byte block header, sizes rounded up to 8 bytes
  *  - only base, math, string and table libraries (what the firmware opens)
  *  - generational GC (firmware calls lua_gc(L, LUA_GCGEN))
- *  - stub API tables: page, controller, midi, leds, slots, var, system
+ *  - stub API tables: page, controller, midi, leds, slots, var, system, clock
  *
  * usage: e16host script.lua [seconds-of-playback] [heap-cap-bytes]
  */
@@ -76,6 +76,8 @@ static int var_set(lua_State *L) {
   return 0;
 }
 static int setrate(lua_State *L) { (void)L; return 0; }
+static int getbpm(lua_State *L) { lua_pushnumber(L, 120); return 1; }
+static int getpos(lua_State *L) { lua_pushinteger(L, 0); return 1; }
 
 static void lib(lua_State *L, const char *name, const luaL_Reg *r) {
   lua_newtable(L);
@@ -87,7 +89,8 @@ static int call(lua_State *L, const char *tbl, const char *fn, int nargs) {
   lua_getglobal(L, tbl);
   lua_getfield(L, -1, fn);
   lua_remove(L, -2);
-  if (lua_type(L, -1) != LUA_TFUNCTION) { lua_pop(L, 1); return 0; }
+  lua_insert(L, -(nargs + 1));             /* function below its arguments */
+  if (lua_type(L, -(nargs + 1)) != LUA_TFUNCTION) { lua_pop(L, nargs + 1); return 0; }
   if (lua_pcall(L, nargs, 0, 0) != LUA_OK) {
     fprintf(stderr, "error in %s.%s: %s\n", tbl, fn, lua_tostring(L, -1));
     fprintf(stderr, "at failure: Lua count %.1f KB, heap in use %zu B (cap %zu B)\n",
@@ -111,14 +114,19 @@ int main(int argc, char **argv) {
   size_t vm = cur;
 
   const luaL_Reg page[] = {{"setTitle", noop}, {"resetTitle", noop}, {NULL, NULL}};
-  const luaL_Reg ctl[] = {{"set", noop}, {"setByIndex", noop}, {"setControls", noop}, {"getPage", getpage}, {NULL, NULL}};
-  const luaL_Reg midi[] = {{"sendCC", noop}, {"sendPC", noop}, {"sendSysex", noop}, {"sendMidi", noop}, {NULL, NULL}};
+  const luaL_Reg ctl[] = {{"set", noop}, {"setByIndex", noop}, {"setControls", noop}, {"getPage", getpage},
+                          {"get", noop}, {"setHoldTime", noop}, {NULL, NULL}};
+  const luaL_Reg midi[] = {{"sendCC", noop}, {"sendPC", noop}, {"sendSysex", noop}, {"sendMidi", noop},
+                           {"listen", noop}, {NULL, NULL}};
   const luaL_Reg leds[] = {{"update", noop}, {"updateByIndex", noop}, {"reset", noop}, {"resetById", noop}, {NULL, NULL}};
   const luaL_Reg slots[] = {{"update", noop}, {"reset", noop}, {NULL, NULL}};
   const luaL_Reg var[] = {{"register", var_register}, {"get", var_get}, {"set", var_set}, {"delete", noop}, {"deleteAll", noop}, {NULL, NULL}};
   const luaL_Reg sys[] = {{"setUpdateRate", setrate}, {NULL, NULL}};
+  const luaL_Reg clk[] = {{"listen", noop}, {"startInternal", noop}, {"stopInternal", noop},
+                          {"setInternalBpm", noop}, {"getBpm", getbpm}, {"getPosition", getpos}, {NULL, NULL}};
   lib(L, "page", page); lib(L, "controller", ctl); lib(L, "midi", midi);
   lib(L, "leds", leds); lib(L, "slots", slots); lib(L, "var", var); lib(L, "system", sys);
+  lib(L, "clock", clk);
   lua_gc(L, LUA_GCCOLLECT);
   size_t base = cur;
 
@@ -138,8 +146,16 @@ int main(int argc, char **argv) {
   lua_pushinteger(L, 3); lua_setfield(L, -2, "index");
   lua_pushinteger(L, 1); lua_setfield(L, -2, "page");
   lua_pcall(L, 1, 0, 0);
+  lua_pushinteger(L, 2); call(L, "clock", "onStart", 1);
   peak = cur;
-  for (int i = 0; i < secs * 50; i++) call(L, "system", "update", 0);
+  /* 120 BPM: 48 MIDI ticks (resolution 96) and 100 updates (10 ms) per second */
+  for (int i = 0, pos = 0; i < secs * 100; i++) {
+    call(L, "system", "update", 0);
+    if (i % 2 == 0) {
+      lua_pushinteger(L, pos % 24 ? 96 : 4); lua_pushinteger(L, pos++); lua_pushinteger(L, 2);
+      call(L, "clock", "onPulse", 3);
+    }
+  }
   /* some encoder turns while playing */
   for (int id = 1; id <= 16; id++) {
     lua_getglobal(L, "controller"); lua_getfield(L, -1, "onEncoderTurn"); lua_remove(L, -2);

@@ -1,4 +1,4 @@
--- TB-3PO: generative 303-style acid sequencer, for the OXI E16 (firmware >= 1.2.0)
+-- TB-3PO: generative 303-style acid sequencer, for the OXI E16 (Lua API >= 1.3.0)
 --
 -- Port of the TB-3PO Hemisphere applet (O&C / Phazerville Hemisphere Suite) to
 -- MIDI, with Generate / Mutate / Undo as in schwung-tb3po. Original: Copyright
@@ -23,10 +23,15 @@
 -- Page 2, settings: 1 step size | 2 gate % | 3 slide (Off, Leg = legato,
 --   CC65 = legato + portamento CC 65) | 4 MIDI channel | 5 output port
 --
+-- Steps follow the E16's clock (24 ticks per quarter note). Play starts the
+-- internal clock at BPM; with external MIDI transport running, the sequence
+-- follows it instead (Start restarts it, Continue resumes), and Play/Stop only
+-- pauses or rejoins it.
+--
 -- The pattern and settings persist in scene variables (p1-p16 hold the pattern;
 -- 31 of 32 slots). A new variable layout version clears old variables first.
--- Errors are caught and shown instead of stopping the script: the header says
--- "ERR" and the bottom 8 labels spell out the message for a few seconds.
+-- Errors in update are caught instead of stopping the script: the header says
+-- "ERR" briefly, and the message goes to the OXI App's console.
 --
 -- Original TB3PO.h notice:
 -- Copyright (c) 2020, Logarhythm
@@ -68,7 +73,6 @@
 --@assign id=37 abbr="Out"  name="Output port" l=0 h=127 manual=true g=21
 -- pages: Acid,Set
 
-local DT = 20.1            -- real update period: firmware fires after > rate ms
 local FULL = 16383
 local C_ON, C_PLAY, C_ACC, C_SLIDE = 0, 50, 85, 25   -- LED color: index into the app's 100-color palette
 local NT = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
@@ -89,9 +93,9 @@ local HI = {14, 32, 11, 8, 5, 12, 100, 300, 8, 100, 2, 16, 15, 65535}
 local P, U = {}, {}        -- pattern and undo copy
 for i = 1, 16 do P[i], U[i] = 0, 0 end
 
-local run, step, cnt, K = false, 0, 0, 5  -- transport, step (1-32), tick in step, ticks/step
+local run, step, tp = false, 0, nil       -- playing, step (1-32), clock source (nil = stopped, 0 = external)
 local held, left, porta = -1, 0, false    -- sounding note, ms until note-off, CC 65 on
-local ticks, msgT, errT = 0, 0, 0         -- update counter; ticks left showing a message / an error
+local ticks, msgT = 0, 0                  -- update counter; ticks left showing a message
 local title, shown
 
 local function clamp(v, lo, hi)
@@ -167,25 +171,12 @@ end
 -- Header: transport + BPM, or a short message (Gen / Mutate / Undo) for ~1 s.
 local function setTitle(msg)
   if not msg and msgT > 0 then return end      -- let a message finish first
-  local s = msg or (run and "TB-3PO > " or "TB-3PO | ") .. SV[8]
-  if msg then msgT = 40 end
+  local s = msg or (run and "TB-3PO > " or "TB-3PO | ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or SV[8])
+  if msg then msgT = 80 end
   if s ~= shown then
     page.resetTitle()                 -- title freeze workaround: set on next tick
     title, shown = s, s
   end
-end
-
--- Pick an update rate of 20-40 ms so a step is exactly K ticks (as in Euclid).
-local function timing()
-  local ms = 60000 / (SV[8] * SV[9])
-  local best, rate = 1e9, 20
-  for k = -(-ms // 40), ms // 20 do
-    local p = clamp((ms / k + 0.4) // 1, 20, 1000)
-    local e = math.abs(k * (p + 0.1) - ms)
-    if e < best then best, rate, K = e, p, k end
-  end
-  DT = rate + 0.1
-  system.setUpdateRate(rate)
 end
 
 -- Pattern strip on encoders 9-16: step s, or (s = 0) the playhead's whole 8-step window.
@@ -197,7 +188,7 @@ local function strip(s, pg)
     local on = t <= SV[2] and (get(t) & 64 > 0 or slid(t > 1 and t - 1 or SV[2]))
     leds.updateByIndex(i, on and clamp((n - 24) * FULL // 72, 0, FULL) or 0, run and t == step and C_PLAY
       or on and get(t) & 128 > 0 and C_ACC or on and slid(t) and C_SLIDE or C_ON)
-    if s == 0 and errT == 0 then slots.update(i, t > SV[2] and "" or on and NT[n % 12 + 1] or "-") end
+    if s == 0 then slots.update(i, t > SV[2] and "" or on and NT[n % 12 + 1] or "-") end
   end
 end
 
@@ -237,30 +228,39 @@ local function tick()
       note(-1)
       note(n, f & 128 > 0 and 127 or 100)
     end
-    held, left = n, K * DT * SV[10] / 100
+    held, left = n, 600 * SV[10] / (clock.getBpm() * SV[9])   -- gate % of a step, in ms
   end
   if (step - 1) % 8 == 0 or prev == 0 then strip(0) else strip(prev); strip(step) end
 end
 
 local function update()
   ticks = ticks + 1
-  if errT > 0 then
-    errT = errT - 1
-    if errT == 0 then strip(0) end
-  end
   if title then page.setTitle(title); title = nil end
   if msgT > 0 then
     msgT = msgT - 1
     if msgT == 0 then setTitle() end   -- msgT is 0 here, so this shows the transport
   end
   if left > 0 then
-    left = left - DT
+    left = left - 10.1                -- real update period: firmware fires after > 10 ms
     if left <= 0 and not slid(step) then note(-1) end
   end
-  if run then
-    cnt = cnt + 1
-    if cnt >= K then cnt = 0; tick() end
-  end
+end
+
+-- Transport: a fresh start plays step 1 on its first tick; Continue resumes.
+-- One function for Start, Continue and (s = nil) Stop, to save memory: a
+-- fresh start shows up as position 0 in onPulse.
+function clock.onStart(s)
+  tp, run = s, s ~= nil
+  note(-1)
+  drawAll()
+end
+clock.onContinue = clock.onStart
+function clock.onStop() clock.onStart() end
+
+function clock.onPulse(b, p)
+  if p == 0 then step = 0 end
+  if run and p % (24 // SV[9]) == 0 then tick() end
+  if tp == 0 and p % 96 == 0 then setTitle() end   -- external tempo, once a bar
 end
 
 -- Generate the whole pattern from the seed (new = draw a new seed first).
@@ -277,16 +277,12 @@ local function generate(new)
 end
 
 -- An error in update would stop the E16's updates for good: catch it instead,
--- show "ERR" in the header and the message on the bottom 8 labels.
+-- flash "ERR" in the header and print the message to the console.
 function system.update()
   local ok, e = pcall(update)
   if not ok then
-    errT = 150
+    print(e)
     setTitle("ERR")
-    e = (tostring(e):gsub("^.-:%d+: ", ""))
-    if controller.getPage() == 1 then
-      for i = 0, 7 do slots.update(i + 9, e:sub(i * 4 + 1, i * 4 + 4)) end
-    end
   end
 end
 
@@ -308,7 +304,7 @@ function controller.onEncoderTurn(e)
   SV[k] = v
   var.set(SN[k], v)
   if k > 10 then note(-1) end
-  timing()
+  clock.setInternalBpm(SV[8])
   drawAll(e.page)
 end
 
@@ -329,11 +325,16 @@ function controller.onEncoderPress(e)
     save()
     setTitle("Undo")
   elseif id == 24 or id == 49 then
-    run, cnt, step = not run, 0, 0
     note(-1)
-    if run then cnt = K - 1 end       -- first update plays step 1
-  elseif id == 20 then
-    step, cnt = 0, K - 1
+    if run then                       -- stop; external transport keeps running without us
+      run = false
+      if tp and tp > 0 then clock.stopInternal(); tp = nil end
+    else                              -- join a running clock, or start the internal one
+      if not tp then clock.startInternal(); tp = 2 end
+      run = true
+    end
+  elseif id == 20 then                -- restart: step 1 on the next step
+    step = 0
     note(-1)
   else
     return
@@ -368,7 +369,7 @@ local function pull()
     P[i] = (var.get("p" .. i) or 0) & 0x3FFFF
     any = any or P[i] > 0
   end
-  timing()
+  clock.setInternalBpm(SV[8])
   return any
 end
 
@@ -380,6 +381,8 @@ end
 
 function page.onInit()
   if not pull() then generate(SV[14] == 0) end   -- first run: make a pattern
+  clock.listen(true, 96)
+  system.setUpdateRate(10)
   for id = 1, 37 do
     if id < 9 or id > 32 then controller.set(id, {manual = true, v = 8192}) end
   end

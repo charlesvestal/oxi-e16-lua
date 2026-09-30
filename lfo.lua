@@ -1,5 +1,5 @@
 -- LFO: 16 LFOs sending MIDI CC, each on its own channel and CC number, for the
--- OXI E16 (firmware >= 1.2.0). A modulation bank across several synths.
+-- OXI E16 (Lua API >= 1.3.0). A modulation bank across several synths.
 --
 -- Pages 1-4: four LFOs per page, one per row (page 1 = LFO 1-4 ... page 4 = LFO 13-16).
 --   turn:  Shape (Sin Tri SawU SawD Sqr S&H) | Rate | Depth -100..+100 % | Center 0-127
@@ -7,7 +7,9 @@
 --   Rate is free (20 s .. 6.4 Hz; labels "2.5s" = period, "1.0H" = Hz) or synced
 --   to the tempo (8 bars .. 1/32, with triplets); pushing Rate toggles, keeping
 --   about the same speed. Synced LFOs follow one beat counter, so they stay
---   locked together.
+--   locked together. While the E16's clock runs (internal or external MIDI
+--   transport), that counter follows the clock's position, and a Start restarts
+--   every LFO on the downbeat; while it's stopped, the counter runs at BPM.
 --   Dest flips the row's first two encoders to its MIDI channel and CC number
 --   (labels "Ch3", "CC74"); push it again to go back. A destination (or output
 --   port) left behind is sent the center value.
@@ -15,16 +17,13 @@
 --   The Center ring shows the live output. An LFO that is off sends its center
 --   value when it is switched off or its Center is turned (a plain CC knob).
 -- Page 5, settings: 1 output port (0 = all), push = restart all (realigns synced
---   LFOs to the downbeat) | 2 BPM | 3 push = all off.
+--   LFOs to the downbeat) | 2 BPM (the E16's internal tempo) | 3 push = all off.
 --
 -- Defaults: only LFO 1 runs; page p sends on channel p, rows on CC 74, 71, 1, 10.
 -- The header shows the page's LFOs and how many run in total ("LFO 1-4 3on").
 -- Settings persist in scene variables a1-a16 (shape, rate, depth, center),
 -- b1-b8 (CC, channel, on; two LFOs each), cfg (output, BPM) and ver: 26 of 32 slots.
 -- A scene's variables outlive script changes, so a new layout version clears them.
---
--- No MIDI clock reaches Lua (firmware 1.2), so the tempo comes from BPM; if a
--- clock callback appears, it only has to drive `beat`.
 
 --@assign id=1  abbr="Shp" name="Row 1 Shape / Channel" l=0 h=127 manual=true g=1
 --@assign id=17 abbr="Shp" name="Row 1 On/Off"    p=true g=1
@@ -65,7 +64,6 @@
 -- pages: LFO1,LFO2,LFO3,LFO4,Set
 
 local N, PAGES, SETP = 16, 4, 5
-local DT = 20.1            -- real update period: firmware fires after > 20 ms
 local FULL = 16383
 local C_ON, C_OFF, C_FRZ = 18, 34, 50   -- LED colors (0-99 in the app's 10x10 grid): blue, white, pink
 local SHN = {"Sin", "Tri", "SawU", "SawD", "Sqr", "S&H"}
@@ -85,6 +83,7 @@ for t = 1, N do
   FZ[t], DV[t], PH[t], RND[t], LAST[t] = 0, 0, 0, math.random() * 2 - 1, -1
 end
 local out, bpm, beat = 0, 120, 0   -- output port, tempo, beats since restart (mod 32)
+local quiet, tempo, at = 99, 120, 0   -- updates since the last clock tick, tempo, beat at that tick
 local title, shown
 
 local function clamp(v, lo, hi)
@@ -94,7 +93,7 @@ end
 -- Rate of LFO t in Hz.
 local function hz(t)
   local r = RT[t]
-  return r > 84 and bpm / 60 / DIVB[r - 84] or 0.05 * 2 ^ (r / 12)
+  return r > 84 and tempo / 60 / DIVB[r - 84] or 0.05 * 2 ^ (r / 12)
 end
 
 -- Packing (each value < 2^24): a = shape-1 | rate << 3 | (depth+100)/2 << 10 | center << 17,
@@ -177,7 +176,13 @@ end
 
 local function update()
   if title then page.setTitle(title); title = nil end
-  beat = (beat + DT / 1000 * bpm / 60) % 32
+  -- Ticks only come while transport runs, at least every 125 ms (20 BPM).
+  -- Between them, move on at the tempo but not past the next tick.
+  -- (20.1 ms: the real update period, since the firmware fires after > 20 ms)
+  quiet = quiet < 99 and quiet + 1 or 99
+  local run = quiet < 14
+  tempo = run and clock.getBpm() or bpm
+  beat = run and math.min(beat + 20.1 / 60000 * tempo, at + 1 / 24) or (beat + 20.1 / 60000 * bpm) % 32
   local pg = controller.getPage()
   for t = 1, N do
     if ON[t] > 0 then
@@ -186,7 +191,7 @@ local function update()
         if r > 84 then
           p = beat / DIVB[r - 84] % 1       -- synced: locked to the beat counter
         else
-          p = (PH[t] + hz(t) * DT / 1000) % 1
+          p = (PH[t] + hz(t) * 20.1 / 1000) % 1
         end
         if p < PH[t] then RND[t] = math.random() * 2 - 1 end   -- new cycle: new S&H value
         PH[t] = p
@@ -200,13 +205,25 @@ local function update()
   end
 end
 
--- An error in update would stop the E16's updates for good: catch it and show it.
+-- An error in update would stop the E16's updates for good: catch it, show
+-- "ERR" and print the message to the OXI App's console.
 function system.update()
   local ok, e = pcall(update)
   if not ok then
+    print(e)
     shown = nil
-    page.setTitle(("ERR " .. tostring(e):gsub("^.-:%d+: ", "")):sub(1, 15))
+    page.setTitle("ERR")
   end
+end
+
+-- While a clock runs, synced LFOs follow its position; a fresh start (position
+-- 0) restarts every LFO. No transport callbacks: that saves memory.
+function clock.onPulse(b, p)
+  if p == 0 then
+    for t = 1, N do PH[t] = 0 end
+  end
+  at, quiet = p % 768 / 24, 0         -- 32 beats of 24 ticks
+  beat = at
 end
 
 -- Turn ids 1-16 edit the LFOs of the current page (1-4); 33 output, 34 BPM.
@@ -228,6 +245,7 @@ function controller.onEncoderTurn(e)
       end
     else
       bpm = clamp(bpm + d, 20, 300)
+      clock.setInternalBpm(bpm)
     end
     var.set("cfg", out | bpm << 4)
     drawAll(e.page)
@@ -340,6 +358,7 @@ local function pull()
   var.register("cfg", "int", out | bpm << 4)
   local v = g("cfg") or out | bpm << 4
   out, bpm = clamp(v & 15, 0, 15), clamp(v >> 4, 20, 300)
+  clock.setInternalBpm(bpm)
   for t = 1, N do LAST[t] = -1 end
 end
 
@@ -354,5 +373,6 @@ function page.onInit()
     if id < 17 or id > 32 then controller.set(id, {manual = true, v = 8192}) end
   end
   system.setUpdateRate(20)
+  clock.listen(true, 96)
   drawAll()
 end

@@ -27,7 +27,7 @@ end
 
 E.load("lfo.lua")
 E.run(100)
-check(E.rate == 20, "update rate 20 ms")
+check(E.rate == 20 and E.listening and E.res == 96, "update rate 20 ms, listens to the clock at 24 ticks per quarter")
 check(E.title == "LFO 1-4 1on", "title shows page and running count (" .. E.title .. ")")
 check(E.labels[1] == "Sin" and E.labels[5] == "Tri" and E.labels[9] == "Sqr" and E.labels[13] == "S&H",
   "row shapes: " .. table.concat({E.labels[1], E.labels[5], E.labels[9], E.labels[13]}, " "))
@@ -123,6 +123,30 @@ E.sent = {}
 E.run(4000)
 a = ccs(3, 20)
 check(peaks(a) >= 3 and peaks(a) <= 5, "1/4 at 60 BPM: about 4 cycles in 4 s (" .. peaks(a) .. ")")
+check(E.bpm == 60, "BPM sets the E16's internal tempo")
+
+-- a running clock drives synced LFOs: external transport at 90 BPM
+E.extStart(90)
+E.run(1)
+E.sent = {}
+E.run(4000)
+a, b = ccs(3, 20), ccs(1, 71)
+check(peaks(a) >= 5 and peaks(a) <= 7, "1/4 follows the external clock: about 6 cycles in 4 s at 90 (" .. peaks(a) .. ")")
+same = #a > 20 and #a == #b
+for i = 1, math.min(#a, #b) do if a[i] ~= b[i] then same = false end end
+check(same, "synced LFOs stay locked to the clock")
+-- Start restarts every LFO: a synced sine starts at its center, rising
+E.extStop(); E.run(500)
+E.sent = {}
+E.extStart(90); E.run(25)
+a = ccs(3, 20)
+check(a[1] and a[1] >= 64 and a[1] <= 80, "Start restarts synced LFOs on the downbeat (first value " .. tostring(a[1]) .. ", ~20 ms in)")
+-- stopped again: free-runs at BPM
+E.extStop(); E.run(500)
+E.sent = {}
+E.run(4000)
+a = ccs(3, 20)
+check(peaks(a) >= 3 and peaks(a) <= 5, "transport stopped: back to BPM 60 (" .. peaks(a) .. ")")
 
 -- toggling back to free keeps about the same speed (1 Hz at 60 BPM)
 show(1)

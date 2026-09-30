@@ -1,13 +1,56 @@
-# OXI E16 Lua scripting: field notes (firmware 1.2.0)
+# OXI E16 Lua scripting: field notes (firmware 1.2.0, API 1.3.0)
 
-These notes supplement OXI's *Lua Scripting API Guide v1.2.0*, the official reference.
+These notes supplement OXI's *Lua Scripting API Guide*, the official reference.
 They record what the guide leaves out or gets wrong, as learned while building
-`euclid.lua`.
+`euclid.lua`. Most were found on firmware 1.2.0. OXI's guide for **API v1.3.0** (29 September
+2026) adds a clock, push release and hold, MIDI note/CC input, a persistent store and a console
+([below](#api-130-what-changed)). Items marked **[1.3]** come from that guide and haven't been
+checked on hardware yet.
 
 Source tags:
 **[HW]** confirmed on hardware · **[FW]** found in the 1.2.0 firmware image (disassembly) ·
-**[GUIDE]** OXI's API guide · **[EX]** header notes in the example `step_sequencer.e16script` ·
+**[GUIDE]** OXI's API guide · **[1.3]** OXI's API 1.3.0 guide, not yet checked on hardware ·
+**[EX]** header notes in the example `step_sequencer.e16script` ·
 **[MODEL]** measured with `test/e16host.c` · **[?]** precaution, not verified
+
+## API 1.3.0: what changed
+
+- **Clock** **[1.3]**:
+  - `clock.listen(true, res)` delivers `clock.onPulse(boundary, position, source)`, plus
+    `onStart`, `onStop` and `onContinue(source)`. `res` must be 4, 8, 16, 32 or 96 (anything else
+    means 16). Only resolution 96 (24 ticks per quarter note) gives triplet steps in whole ticks.
+  - Sources: 0 = external MIDI transport, 1 = internal clock started by the firmware (alt action
+    or recorder), 2 = internal clock started by Lua.
+  - `clock.startInternal()`, `clock.stopInternal()` and `clock.setInternalBpm(20–300)` control
+    the one internal clock that the Internal Clock alt action also uses. `clock.getBpm()` returns
+    1 while no clock runs. `clock.getPosition(res)` gives the position.
+  - Pulses arrive only while transport runs; external ticks without Start don't produce them.
+  - Loading a script turns listening off and stops an internal clock that Lua started.
+  - A clock callback error ends only that call; listening continues.
+  - External Stop also stops a Lua-started internal clock. External Start and Continue don't
+    replace a running internal clock.
+  - Lua can't choose the MIDI clock output. It's whatever the alt action last used (Off at first).
+  - The scripts here keep their own `run` flag, so Play/Stop can silence a sequence while external
+    transport keeps running. They set that state right after `startInternal` rather than waiting
+    for `onStart`, so a quick second press still stops.
+- **Pushes** **[1.3]**:
+  - `onEncoderPress` fires when the encoder goes down. `onEncoderRelease` follows exactly once,
+    with `held_ms`; its `id` and `page` are the ones from the press.
+  - `onEncoderHold` fires once per press after `controller.setHoldTime(30–3000 ms)`. It's off
+    until armed, and loading a script disarms it.
+  - On 1.2.0, `chords.lua` found that pushes arrived on release. **[HW]**
+- **MIDI in** **[1.3]**: `midi.listen{notes=, cc=, channel=, port=}`, then `midi.onNote(port, ch, note, vel)`
+  (Note Off arrives as velocity 0) and `midi.onCC`. An error in them stops listening.
+- **Store** **[1.3]**: `store.data`, 1 KiB per scene (or `store.use("shared")` at top level), saved
+  on scene exit. It's a candidate to replace packed variables, but it isn't editable from the
+  device menu, and loaded tables cost heap.
+- **Console** **[1.3]**: the OXI App's Scripts tab shows `print` output and Lua errors, including
+  load errors. Open it before loading.
+- `system.setUpdateRate` accepts **5–1000 ms** **[1.3]**. The uploaded script (after the app's
+  minifier) can be up to **8,192 bytes** **[1.3]**.
+- Manual controls get every turn, even at the ends of the range, with `increment` still showing
+  the direction **[1.3]**. That may make the end-stop write-back below unnecessary.
+- `controller.get(id, key)` reads a destination's properties **[1.3]**.
 
 ## Environment
 
@@ -16,13 +59,15 @@ Source tags:
 - The only libraries are **base, math, string and table**. There's no `os`, `io`, `coroutine`,
   `utf8` or `debug`, so **there is no clock or time function**. **[FW]**
 - `collectgarbage` works, and the GC runs in **generational** mode (`lua_gc(L, LUA_GCGEN)` at startup). **[FW]**
-- `print` exists, but **the Lua Debug view isn't offered** in the Hold Mode menu
+- On 1.2.0, `print` exists, but **the Lua Debug view isn't offered** in the Hold Mode menu
   (the options are Off / Looper / Off), even though "Lua Debug" is in the firmware's strings.
-  **Script errors can't be seen on the device.** **[HW] [FW]**
-- There are exactly **six callbacks**: `page.onInit`, `page.onPageChange`, `page.onVarChange`,
+  **Script errors can't be seen on the device.** **[HW] [FW]** On 1.3.0 the OXI App's console
+  shows them. **[1.3]**
+- On 1.2.0 there are exactly **six callbacks**: `page.onInit`, `page.onPageChange`, `page.onVarChange`,
   `controller.onEncoderTurn`, `controller.onEncoderPress` and `controller.onSysex`.
   There's **no MIDI clock, transport, note or CC input**. The E16 receives clock itself
-  (its looper syncs to it), but none of it reaches Lua. **[FW]**
+  (its looper syncs to it), but none of it reaches Lua. **[FW]** API 1.3.0 adds clock, release,
+  hold and note/CC input (above).
 
 ## Memory and size (the main constraint)
 
@@ -73,16 +118,17 @@ Source tags:
   - checking the heap on the device: the Euclid header shows it at startup, and `probe.lua`
     finds the ceiling **[MODEL] [HW]**
 
-## Timing: `system.update` (undocumented)
+## Timing: `system.update`
 
-- The guide leaves it out, but it exists and works. **[FW] [HW] [EX]**
-  - `system.setUpdateRate(ms)`: `ms` must be 20–1000. Anything else stores 0, which **disables** updates.
+- The 1.2 guide leaves it out, but it exists and works. The 1.3 guide documents it. **[FW] [HW] [EX] [1.3]**
+  - `system.setUpdateRate(ms)`: on 1.2.0, `ms` must be 20–1000 (5–1000 on 1.3.0). Anything else stores 0, which **disables** updates.
   - The firmware looks up the global `system.update` and calls it with **no arguments**,
     once **more than** `ms` has passed. SysTick runs at 10 kHz, so the real period is at least `ms + 0.1`,
     plus main-loop latency.
   - **If `update` raises an error, the firmware silently disables updates** (rate → 0).
     Clamp everything you read.
-- It's the only timebase, so a sequencer can only free-run. Two approaches:
+- On 1.2.0 it's the only timebase, so a sequencer can only free-run. (On 1.3.0 the scripts here
+  step on `clock.onPulse` instead.) Two approaches for free-running:
   - A **fixed 20 ms tick with a carried remainder** keeps the average tempo but adds up to 20 ms of lurch.
   - **Choosing a rate so each step is a whole number of ticks** gives even steps, with tempo
     within about 1%. Euclid and the example both use this. **[MODEL] [EX]**
@@ -100,7 +146,9 @@ Source tags:
 
 - **`leds.update(id, …)` (by script ID) doesn't show in the normal encoder view.** It only appeared
   on the settings page. The normal view draws the control's own value instead. Use
-  **`leds.updateByIndex(index, value, color)`**, which takes priority there. **[HW]**
+  **`leds.updateByIndex(index, value, color)`**, which takes priority there. **[HW]** The 1.3
+  guide says ID-based values now show in the normal view and follow page changes, which is
+  worth retesting. **[1.3]**
 - Index overrides are per physical ring and persist across pages. Reset them with `leds.reset(i)` when
   leaving your page, and redraw on return. **[GUIDE] [HW]**
 - `color` is an **index into the OXI App's 100-color palette** (its 10×10 encoder color picker,
@@ -124,7 +172,7 @@ Source tags:
   hardcodes USB-MIDI CIN 9 (note-on) in the packet header, which is fine for notes.
   `out` 0 means all ports. **[FW] [GUIDE]**
 - `midi.sendCC(out, channel 0–15, cc, value)`. For a stop panic, send note-offs plus CC 123 and CC 120. **[GUIDE] [EX]**
-- `midi.sendSysex` takes at most 128 bytes, including F0/F7. `onSysex` is the only MIDI input. **[GUIDE]**
+- `midi.sendSysex` takes at most 128 bytes, including F0/F7. On 1.2.0, `onSysex` is the only MIDI input. **[GUIDE]**
 
 ## Variables (`var`)
 
@@ -177,10 +225,22 @@ implements it. **[HW]**
   8192 bytes, in one ~9.4 KB SysEx message). It doesn't split anything into chunks.
 - **A script can be uploaded on its own.** Kind 4 alone replaces the scene's code and leaves its pages
   and variables as they are. The new code runs when the scene is next opened. **[HW]**
+- **A whole scene can be uploaded without the app** (`e16push.py scene`). The encoding below
+  reproduces the OXI App 1.3's upload byte for byte for two captured scenes, and the device accepts
+  it. **[HW]** (Captured by loading a CoreMIDI-logging dylib into an ad-hoc re-signed copy of the
+  app. Launch it directly, not via `nohup`, which strips `DYLD_*`. The app also prints small
+  sends to stdout.)
+- **Header body (80 bytes):** title (16, NUL-padded), icon bitmap (32; the scene JSON holds it
+  as a list, or the name `list32`), color, transmitMode, pcOnEntry, bankOnEntry (u16 BE),
+  recentPage, recentPreset, transmitOnSceneEntry, transmitOnPageSwitch, transmitOnPresetLoad,
+  smartTransmit, outputOnEntry, holdMode, acceleration, then the script name (18). The captures had
+  zeros in most of these, so the order of the zero fields is assumed from the JSON.
+- **Page body (976 bytes):** title (12), 0, channel, output, 0, then 16 encoders of 60 bytes each:
+  name (8), abbr (4), color, the push action (instrument, parameter, type, display, mode, channel,
+  lower u16, upper u16, nr1, nr2, output, scriptId: 14 bytes), two turn actions (the same fields
+  plus defaultValue u16 after upper: 16 bytes each), and color2. u16 values are big-endian.
 - **Packed data:** `total length` (u32 big-endian, body + 8), `11`, `body length` (u16 big-endian), `00`, the body,
   then a CRC (u32 big-endian). Everything is converted to 7-bit form: each 7 bytes become a byte of
   high bits (bit *j* = byte *j*) followed by the 7 low-7-bit bytes.
 - **CRC:** the STM32 hardware CRC-32 of the body: poly `0x04C11DB7`, init `0xFFFFFFFF`, 32-bit
   little-endian words (zero-padded), no reflection, no final XOR. It matched every captured message.
-- The header and page bodies are only partly decoded (names, lengths). The encoder wiring inside
-  the 976-byte page body isn't mapped yet.

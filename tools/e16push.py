@@ -4,9 +4,11 @@
   e16push.py list                   scene names in slots 1-16 (home-screen encoders)
   e16push.py version                raw firmware-version reply
   e16push.py push SLOT FILE         replace the script of the scene in SLOT (1-16)
+  e16push.py scene SLOT FILE        upload a whole .oxie16 scene to SLOT, like the OXI App
 
-FILE is a .lua (minified like make_scene.py does) or an .oxie16 scene (its "code").
+For push, FILE is a .lua (minified like make_scene.py does) or an .oxie16 scene (its "code").
 Only the script is sent; the scene's pages, labels and variables stay as they are.
+scene sends the header, all 12 pages (names, wiring, colors) and the script.
 Reopen the scene on the E16 to run the new code. Protocol: docs/e16-lua-notes.md.
 Needs mido + python-rtmidi.
 """
@@ -61,6 +63,64 @@ def upload_msg(kind, slot, index, body):
     return PREFIX + [0x08, kind, slot, index] + pack7(payload)
 
 
+# Scene encoding, as the OXI App 1.3 sends it (checked byte for byte against captures).
+ICONS = {"list32": [56, 28, 84, 34, 146, 69, 146, 73, 130, 65, 68, 34, 56, 28, 0, 0,
+                    0, 0, 56, 28, 68, 34, 162, 65, 146, 73, 130, 69, 68, 34, 56, 28]}
+
+
+def _text(t, n):
+    b = t.encode("latin-1")[:n]
+    return b + bytes(n - len(b))
+
+
+def _u16(v):
+    return (v & 0xFFFF).to_bytes(2, "big")
+
+
+def _action(a, turn):
+    """14 bytes (turn actions: 16, with the default value)."""
+    b = bytes([a["instrument"], a["parameter"], a["type"], a["display"], a["mode"], a["channel"]])
+    b += _u16(a["lower"]) + _u16(a["upper"]) + (_u16(a["defaultValue"]) if turn else b"")
+    return b + bytes([a["nr1"], a["nr2"], a["output"], a["scriptId"]])
+
+
+def page_body(p):
+    """976 bytes: title (12), 0, channel, output, 0, then 16 encoders of 60 bytes:
+    name (8), abbr (4), color, push action, turn actions 1 and 2, color2."""
+    b = _text(p["title"], 12) + bytes([0, p["channel"], p["output"], 0])
+    for e in p["encoders"]:
+        b += _text(e["name"], 8) + _text(e["abbr"], 4) + bytes([e["color"]]) + _action(e["push_action"], False)
+        b += b"".join(_action(t, True) for t in e["turn_actions"]) + bytes([e.get("color2", 0)])
+    assert len(b) == 976, len(b)
+    return b
+
+
+def header_body(s):
+    """80 bytes: title (16), icon bitmap (32), settings, script name (18). The settings were
+    all zero except color, bankOnEntry, smartTransmit and acceleration in the captures, so the
+    order of the zero ones (JSON order is assumed) isn't confirmed."""
+    icon = s["icon"] if isinstance(s["icon"], list) else ICONS.get(s["icon"])
+    if icon is None:
+        sys.exit(f"unknown icon {s['icon']!r}: open and save the scene in the OXI App once")
+    b = _text(s["title"], 16) + bytes(icon)
+    b += bytes([s["color"], s["transmitMode"], s["pcOnEntry"]]) + _u16(s["bankOnEntry"])
+    b += bytes([s[k] for k in ("recentPage", "recentPreset", "transmitOnSceneEntry", "transmitOnPageSwitch",
+                               "transmitOnPresetLoad", "smartTransmit", "outputOnEntry", "holdMode", "acceleration")])
+    b += _text(s.get("code", {}).get("scriptName", ""), 18)
+    assert len(b) == 80, len(b)
+    return b
+
+
+def scene_messages(s, slot):
+    """The upload messages for scene dict s: header, pages 0-11, script."""
+    code = s.get("code", {}).get("code", "").encode()
+    if len(code) > SCRIPT_BYTES:
+        sys.exit(f"script is {len(code)} bytes; the device holds {SCRIPT_BYTES}")
+    msgs = [upload_msg(0, slot, 0, header_body(s))]
+    msgs += [upload_msg(1, slot, i, page_body(p)) for i, p in enumerate(s["pages"])]
+    return msgs + [upload_msg(4, slot, 0, code.ljust(SCRIPT_BYTES, b"\0"))]
+
+
 class E16:
     def __init__(self):
         name = next((n for n in mido.get_output_names() if "E16" in n), None)
@@ -100,6 +160,12 @@ class E16:
         r = self.request(upload_msg(0x04, slot, 0, b.ljust(SCRIPT_BYTES, b"\0")), timeout=5)
         return r == ACK
 
+    def push_scene(self, slot, scene):
+        for m in scene_messages(scene, slot):
+            if self.request(m, timeout=5) != ACK:
+                return False
+        return True
+
 
 def load_code(path):
     if path.endswith(".oxie16"):
@@ -109,7 +175,7 @@ def load_code(path):
 
 def main():
     args = sys.argv[1:]
-    if not args or args[0] not in ("list", "version", "push") or (args[0] == "push" and len(args) != 3):
+    if not args or args[0] not in ("list", "version", "push", "scene") or (args[0] in ("push", "scene") and len(args) != 3):
         sys.exit(__doc__)
     e = E16()
     if args[0] == "version":
@@ -117,6 +183,15 @@ def main():
     elif args[0] == "list":
         for s in range(16):
             print(f"{s + 1:2}  {e.scene_name(s) or '(no reply)'}")
+    elif args[0] == "scene":
+        slot = int(args[1])
+        if not 1 <= slot <= 16:
+            sys.exit("SLOT is 1-16")
+        scene = json.load(open(args[2], encoding="utf-8"))
+        name = e.scene_name(slot - 1)
+        ok = e.push_scene(slot - 1, scene)
+        print(f"{'ok' if ok else 'FAILED (no ACK)'}: scene {scene['title']!r} -> slot {slot} (was {name})")
+        sys.exit(0 if ok else 1)
     else:
         slot = int(args[1])
         if not 1 <= slot <= 16:

@@ -1,4 +1,4 @@
--- MODSEQ: 16-step CC modulation sequencer, for the OXI E16 (firmware >= 1.2.0)
+-- MODSEQ: 16-step CC modulation sequencer, for the OXI E16 (Lua API >= 1.3.0)
 --
 -- Page 1: one step per encoder.
 --   turn: step value 0-127 | push: glide on/off (ramp to the next step's value)
@@ -6,14 +6,15 @@
 --   color, and steps past the length go dark. Labels show values ("~64" = glide).
 -- Page 2, settings (push encoder 1 = play/stop):
 --   BPM 20-300 | step 1/4 1/8 8T 1/16 16T 1/32 | length 1-16 | CC number |
---   MIDI channel | output port (0 = all) | trim (0.1% tempo, + = faster)
+--   MIDI channel | output port (0 = all)
 --
--- Timing: no clock input exists for Lua; like Euclid, each step is a whole
--- number of update ticks (20-40 ms), so steps are even and the tempo is
--- within ~1%. Glides move in tick-sized increments.
+-- Timing: steps follow the E16's clock (24 ticks per quarter note), and glides
+-- move once per tick. Play starts the internal clock at BPM; with external MIDI
+-- transport running, the sequence follows it instead (Start restarts it,
+-- Continue resumes), and Play/Stop only pauses or rejoins it.
 --
 -- Settings persist in scene variables: s1-s16 (values), glide (bit mask),
--- bpm div len cc ch out trim.
+-- bpm div len cc ch out.
 
 --@assign id=1  abbr="S1"  name="Step 1"  l=0 h=127 manual=true g=1
 --@assign id=17 abbr="S1"  name="Glide 1" p=true g=1
@@ -54,10 +55,8 @@
 --@assign id=36 abbr="CC"   name="CC number"    l=0 h=127 manual=true g=20
 --@assign id=37 abbr="Chan" name="MIDI channel" l=0 h=127 manual=true g=21
 --@assign id=38 abbr="Out"  name="Output port"  l=0 h=127 manual=true g=22
---@assign id=39 abbr="Trim" name="Tempo trim"   l=0 h=127 manual=true g=23
 -- pages: Mod,Set
 
-local DT = 20.1            -- real update period: firmware fires after > rate ms
 local FULL = 16383
 local C_ON, C_PLAY, C_GLIDE = 0, 50, 25   -- LED color: index into the app's 100-color palette
 
@@ -65,15 +64,15 @@ local C_ON, C_PLAY, C_GLIDE = 0, 50, 25   -- LED color: index into the app's 100
 local S = {0, 16, 32, 48, 64, 80, 96, 112, 127, 112, 96, 80, 64, 48, 32, 16}
 local GL = 0
 
--- Settings (page 2, ids 33-39)
-local SN = {"bpm", "div", "len", "cc", "ch", "out", "trim"}
-local SV = {120, 4, 16, 74, 1, 0, 0}
-local LO = {20, 1, 1, 0, 1, 0, -99}
-local HI = {300, 8, 16, 127, 16, 15, 99}
+-- Settings (page 2, ids 33-38)
+local SN = {"bpm", "div", "len", "cc", "ch", "out"}
+local SV = {120, 4, 16, 74, 1, 0}
+local LO = {20, 1, 1, 0, 1, 0}
+local HI = {300, 8, 16, 127, 16, 15}
 local DIVS = {1, 2, 3, 4, 6, 8}
 local DL = {"1/4", "1/8", "8T", "1/16", "D5", "16T", "D7", "1/32"}
 
-local run, cur, cnt, K = false, 0, 0, 5   -- transport, step (1-16), tick in step, ticks/step
+local run, cur, tp = false, 0, nil      -- playing, step (1-16), clock source (nil = stopped, 0 = external)
 local last = -1                           -- last CC value sent
 local title, shown                        -- pending / displayed header text
 
@@ -84,24 +83,11 @@ end
 local function glide(i) return GL >> (i - 1) & 1 == 1 end
 
 local function setTitle()
-  local s = (run and "MOD > " or "MOD | ") .. SV[1]
+  local s = (run and "MOD > " or "MOD | ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or SV[1])
   if s ~= shown then
     page.resetTitle()                 -- title freeze workaround: set on next tick
     title, shown = s, s
   end
-end
-
--- Pick an update rate of 20-40 ms so a step is exactly K ticks (as in Euclid).
-local function timing()
-  local ms = 60000 / (SV[1] * SV[2]) / (1 + SV[7] / 1000)
-  local best, rate = 1e9, 20
-  for k = -(-ms // 40), ms // 20 do
-    local p = clamp((ms / k + 0.4) // 1, 20, 1000)
-    local e = math.abs(k * (p + 0.1) - ms)
-    if e < best then best, rate, K = e, p, k end
-  end
-  DT = rate + 0.1
-  system.setUpdateRate(rate)
 end
 
 -- Ring (and label, when full) of step i, if page 1 is showing.
@@ -118,12 +104,12 @@ local function drawAll(pg)
   if pg == 1 then
     for i = 1, 16 do draw(i, true, pg) end
   elseif pg == 2 then
-    for k = 1, 7 do
+    for k = 1, 6 do
       local v = SV[k]
       leds.updateByIndex(k, (v - LO[k]) * FULL // (HI[k] - LO[k]), C_ON)
       slots.update(k, k == 1 and "" .. v or k == 2 and DL[v] or k == 3 and "L" .. v
         or k == 4 and (v < 100 and "CC" or "C") .. v or k == 5 and "Ch" .. v
-        or k == 6 and (v == 0 and "All" or "O" .. v) or (v > 0 and "T+" or "T") .. v)
+        or (v == 0 and "All" or "O" .. v))
     end
   end
   setTitle()
@@ -138,28 +124,48 @@ end
 
 function system.update()
   if title then page.setTitle(title); title = nil end
+end
+
+-- Transport: a fresh start plays step 1 on its first tick; Continue resumes.
+function clock.onStart(s)
+  tp, run, cur = s, true, 0
+  drawAll()
+end
+
+function clock.onContinue(s)
+  tp, run = s, true
+  drawAll()
+end
+
+function clock.onStop()
+  tp, run = nil, false
+  drawAll()
+end
+
+function clock.onPulse(b, p)
   if not run then return end
-  cnt = cnt + 1
-  if cnt >= K or cur == 0 then        -- next step (always leave step 0 at once)
-    cnt = 0
+  local n = 24 // SV[2]               -- ticks per step
+  local k = p % n
+  if k == 0 or cur == 0 then          -- next step (always leave step 0 at once)
     local was = cur
     cur = cur % SV[3] + 1
     if was > 0 then draw(was) end
     draw(cur)
   end
   local v = S[cur]
-  if glide(cur) then                  -- ramp toward the next step's value
-    v = math.floor(v + (S[cur % SV[3] + 1] - v) * cnt / K + 0.5)
+  if glide(cur) then                  -- ramp toward the next step's value, once per tick
+    v = math.floor(v + (S[cur % SV[3] + 1] - v) * k / n + 0.5)
   end
   send(v)
+  if tp == 0 and p % 96 == 0 then setTitle() end   -- external tempo, once a bar
 end
 
--- Turn ids 1-16 set step values, 33-39 the settings; pushes 17-32 toggle
+-- Turn ids 1-16 set step values, 33-38 the settings; pushes 17-32 toggle
 -- glide, 49 is play/stop.
 function controller.onEncoderTurn(e)
   local id, d = e.id, e.increment
   -- 0 = not a physical turn (recorder, random, group); 255 = non-script control
-  if d == 0 or id < 1 or id > 39 or id > 16 and id < 33 then return end
+  if d == 0 or id < 1 or id > 38 or id > 16 and id < 33 then return end
   controller.set(id, "v", 8192)       -- keep manual encoders off their end stops
   if id > 32 then
     local k = id - 32
@@ -173,8 +179,8 @@ function controller.onEncoderTurn(e)
     end
     SV[k] = v
     var.set(SN[k], v)
-    if k == 4 or k == 5 or k == 6 then last = -1 end   -- resend to the new destination
-    timing()
+    if k > 3 then last = -1 end       -- resend to the new destination
+    if k == 1 then clock.setInternalBpm(v) end
     drawAll(e.page)
     return
   end
@@ -185,8 +191,13 @@ end
 
 function controller.onEncoderPress(e)
   if e.id == 49 then
-    run, cur, cnt = not run, 0, 0
-    if run then cnt = K - 1 end       -- first update starts step 1
+    if run then                       -- stop; external transport keeps running without us
+      run = false
+      if tp and tp > 0 then clock.stopInternal(); tp = nil end
+    else                              -- join a running clock, or start the internal one
+      if not tp then clock.startInternal(); tp = 2 end
+      run = true
+    end
     drawAll()
     return
   end
@@ -215,12 +226,12 @@ local function pull()
   end
   var.register("glide", "int", GL)
   GL = g("glide") & 0xFFFF
-  for k = 1, 7 do
+  for k = 1, 6 do
     var.register(SN[k], "int", SV[k])
     SV[k] = clamp(g(SN[k]), LO[k], HI[k])
   end
   last = -1
-  timing()
+  clock.setInternalBpm(SV[1])
 end
 
 function page.onVarChange()
@@ -230,7 +241,9 @@ end
 
 function page.onInit()
   pull()
-  for id = 1, 39 do
+  clock.listen(true, 96)
+  system.setUpdateRate(20)
+  for id = 1, 38 do
     if id < 17 or id > 32 then controller.set(id, {manual = true, v = 8192}) end
   end
   drawAll()
