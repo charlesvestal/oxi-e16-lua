@@ -129,9 +129,9 @@ pad to play it. The header shows the set's name, and labels show chord names (mi
 use a lowercase root: `f#11` = F#m11; `s` = sus, `a9` = add9, `h7` = half-diminished,
 `?` = no simple name). The ring lights on the sounding pad.
 
-**Make your own layout.** Turn a pad to change its chord type (34 types: triads, sus, 6ths, 7ths,
-9ths, 11ths, 13ths, altered). Hold the pad and turn to change its root; you hear the chord while
-you hold it, and it re-strikes once you pause. An edited chord is voiced on the device: the root
+**Make your own layout.** Turn a pad to change its root. Hold the pad and turn to change its
+chord type (34 types: triads, sus, 6ths, 7ths, 9ths, 11ths, 13ths, altered). Turning doesn't play
+anything, and a chord that's ringing keeps ringing; the next push plays the new chord. An edited chord is voiced on the device: the root
 in the bass near the original bass note, the rest around the original chord's register, so it
 sits with the rest of the set. Turn back to the original root and type and the hand voicing
 returns. Edits are saved in the scene (the store holds all 176 pads with room to spare), and

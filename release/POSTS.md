@@ -56,8 +56,8 @@ Neo Soul, Lofi R&B, Indie Jazz, Detroit, Lush Pads, Pop Piano, Impressionist and
 The labels show the chord names.
 
 - Push a pad to play its chord. By default it sounds while you hold the pad.
-- Make your own layout: turn a pad to change its chord type (34 types), or hold it and turn to
-  change the root. Edited chords are voiced to fit the set, and edits are saved in the scene.
+- Make your own layout: turn a pad to change its root, or hold it and turn to change its chord
+  type (34 types). Edited chords are voiced to fit the set, and edits are saved in the scene.
 - Page 12: transpose, octave, velocity, length (Held, Latch or 0.1–4 s), strum time and
   direction, MIDI channel, output port, Panic, and Reset (clears your edits).
 

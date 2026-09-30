@@ -6,8 +6,8 @@
 --   lowercase root (f#11 = F#m11, s = sus, a9 = add9, h7 = half-dim); the ring lights
 --   while the chord sounds (its fill follows the bass note). The header shows
 --   the set's name.
--- Editing: turn a pad to change its chord type; hold it and turn to change its
---   root. Turning doesn't play anything (a sounding chord keeps ringing); the
+-- Editing: turn a pad to change its root; hold it and turn to change its
+--   chord type. Turning doesn't play anything (a sounding chord keeps ringing); the
 --   next push plays the new chord. An edited chord is voiced around the original's register.
 --   Turning back to the original root and type restores the hand voicing. Edits
 --   are saved in the scene's store; Reset on page 12 clears them all.
@@ -23,22 +23,22 @@
 -- writes the data block below. Settings persist in scene variables:
 -- tr oct vel gate strum dir ch out; edits in store.data.e (pad -> root * 64 + type).
 
---@assign id=1  abbr="Pad1"  name="Pad 1 type (hold: root)" l=0 h=127 manual=true g=1
---@assign id=2  abbr="Pad2"  name="Pad 2 type (hold: root)" l=0 h=127 manual=true g=2
---@assign id=3  abbr="Pad3"  name="Pad 3 type (hold: root)" l=0 h=127 manual=true g=3
---@assign id=4  abbr="Pad4"  name="Pad 4 type (hold: root)" l=0 h=127 manual=true g=4
---@assign id=5  abbr="Pad5"  name="Pad 5 type (hold: root)" l=0 h=127 manual=true g=5
---@assign id=6  abbr="Pad6"  name="Pad 6 type (hold: root)" l=0 h=127 manual=true g=6
---@assign id=7  abbr="Pad7"  name="Pad 7 type (hold: root)" l=0 h=127 manual=true g=7
---@assign id=8  abbr="Pad8"  name="Pad 8 type (hold: root)" l=0 h=127 manual=true g=8
---@assign id=9  abbr="Pad9"  name="Pad 9 type (hold: root)" l=0 h=127 manual=true g=9
---@assign id=10 abbr="Pd10" name="Pad 10 type (hold: root)" l=0 h=127 manual=true g=10
---@assign id=11 abbr="Pd11" name="Pad 11 type (hold: root)" l=0 h=127 manual=true g=11
---@assign id=12 abbr="Pd12" name="Pad 12 type (hold: root)" l=0 h=127 manual=true g=12
---@assign id=13 abbr="Pd13" name="Pad 13 type (hold: root)" l=0 h=127 manual=true g=13
---@assign id=14 abbr="Pd14" name="Pad 14 type (hold: root)" l=0 h=127 manual=true g=14
---@assign id=15 abbr="Pd15" name="Pad 15 type (hold: root)" l=0 h=127 manual=true g=15
---@assign id=16 abbr="Pd16" name="Pad 16 type (hold: root)" l=0 h=127 manual=true g=16
+--@assign id=1  abbr="Pad1"  name="Pad 1 root (hold: type)" l=0 h=127 manual=true g=1
+--@assign id=2  abbr="Pad2"  name="Pad 2 root (hold: type)" l=0 h=127 manual=true g=2
+--@assign id=3  abbr="Pad3"  name="Pad 3 root (hold: type)" l=0 h=127 manual=true g=3
+--@assign id=4  abbr="Pad4"  name="Pad 4 root (hold: type)" l=0 h=127 manual=true g=4
+--@assign id=5  abbr="Pad5"  name="Pad 5 root (hold: type)" l=0 h=127 manual=true g=5
+--@assign id=6  abbr="Pad6"  name="Pad 6 root (hold: type)" l=0 h=127 manual=true g=6
+--@assign id=7  abbr="Pad7"  name="Pad 7 root (hold: type)" l=0 h=127 manual=true g=7
+--@assign id=8  abbr="Pad8"  name="Pad 8 root (hold: type)" l=0 h=127 manual=true g=8
+--@assign id=9  abbr="Pad9"  name="Pad 9 root (hold: type)" l=0 h=127 manual=true g=9
+--@assign id=10 abbr="Pd10" name="Pad 10 root (hold: type)" l=0 h=127 manual=true g=10
+--@assign id=11 abbr="Pd11" name="Pad 11 root (hold: type)" l=0 h=127 manual=true g=11
+--@assign id=12 abbr="Pd12" name="Pad 12 root (hold: type)" l=0 h=127 manual=true g=12
+--@assign id=13 abbr="Pd13" name="Pad 13 root (hold: type)" l=0 h=127 manual=true g=13
+--@assign id=14 abbr="Pd14" name="Pad 14 root (hold: type)" l=0 h=127 manual=true g=14
+--@assign id=15 abbr="Pd15" name="Pad 15 root (hold: type)" l=0 h=127 manual=true g=15
+--@assign id=16 abbr="Pd16" name="Pad 16 root (hold: type)" l=0 h=127 manual=true g=16
 --@assign id=17 abbr="Pad1"  name="Pad 1"  p=true g=1
 --@assign id=18 abbr="Pad2"  name="Pad 2"  p=true g=2
 --@assign id=19 abbr="Pad3"  name="Pad 3"  p=true g=3
@@ -265,7 +265,7 @@ function system.update()
   end
 end
 
--- Turn ids 1-16 edit pads on pages 1-11 (type; root while held); 33-40 change
+-- Turn ids 1-16 edit pads on pages 1-11 (root; type while held); 33-40 change
 -- the settings (page 12). Push ids 17-32 play pads on pages 1-11; 57 is all
 -- notes off; 58 held for 2 s clears the edits.
 function controller.onEncoderTurn(e)
@@ -278,7 +278,7 @@ function controller.onEncoderTurn(e)
     local k = (e.page - 1) * 16 + id
     local o = orig(k)
     local x = ED[k] or o
-    if down == k then x = (x // 64 + d) % 12 * 64 + x % 64
+    if down ~= k then x = (x // 64 + d) % 12 * 64 + x % 64
     else x = x // 64 * 64 + (x % 64 - 1 + d) % NTY + 1 end
     ED[k] = x ~= o and x or nil       -- back at the original: the hand voicing returns
     slots.update(id, label(k))

@@ -229,11 +229,12 @@ check(offs() == #ons(), "releasing the sounding pad stops it")
 E.sent = {}; pad(12, 1); lift(12, 1)          -- settings-page push: no pad
 check(true, "releases on the settings page are ignored")
 
--- editing: turn = chord type, hold + turn = root
+-- editing: turn = root, hold + turn = chord type
 local IVS = {"047", "037", "036", "048", "027", "057", "0479", "0379", "047A", "047B", "037A", "037B", "036A",
   "0369", "057A", "0247", "0237", "02479", "02379", "0247A", "0247B", "0237A", "0257A", "02457A", "02357A",
   "02457B", "02479A", "02379A", "02479B", "0147A", "0347A", "0467B", "0137A", "07"}
-local function eturn(i, n, held)
+local function eturn(i, n, root)                -- chord type (held), or root (root = true)
+  local held = not root
   if held then pad(1, i) end
   for _ = 1, math.abs(n) do
     controller.onEncoderTurn{id = i, index = i, page = 1, increment = n > 0 and 4 or -4, value = 8192, scaled = 64, is_held = false}
@@ -282,18 +283,18 @@ for q = 1, #IVS do
 end
 check(okT, "every chord type voices its own notes, root in the bass near the original (" .. why .. ")")
 check(E.labels[1] == origLabel and store.data.e[1] == nil, "a full cycle of types wraps back to the original")
--- root: hold + turn moves it a semitone per event (not per acceleration step)
+-- root: a plain turn moves it a semitone per event (not per acceleration step)
 local r0 = playNotes(2)[1]
 eturn(2, 2, true)
 local r2 = playNotes(2)
-check((r2[1] - r0) % 12 == 2 and math.abs(r2[1] - r0) <= 6, "hold + turn: root up 2 semitones (" .. r0 .. " -> " .. r2[1] .. ")")
+check((r2[1] - r0) % 12 == 2 and math.abs(r2[1] - r0) <= 6, "turn: root up 2 semitones (" .. r0 .. " -> " .. r2[1] .. ")")
 -- turning plays nothing: a sounding chord keeps ringing, the next push plays the edit
 set(4, 1); E.show(1)
 E.sent = {}; pad(1, 3); E.run(50)
 local n1 = #ons()
 local before3 = {}
 for _, m in ipairs(ons()) do before3[#before3 + 1] = m.d1 end
-eturn(3, 1); E.run(500)
+eturn(3, 1, true); E.run(500)
 check(n1 > 0 and #ons() == n1 and offs() == 0 and E.rings[3].c ~= 0, "turning a sounding pad: no new notes, the chord keeps ringing")
 pad(1, 3); E.run(20)                          -- Ltch: this push stops it
 check(offs() == n1, "... and it's released normally")
@@ -305,9 +306,12 @@ pad(1, 3); E.run(20)
 set(4, -1); E.show(1)
 E.sent = {}; pad(1, 4); E.run(30)
 local n4 = #ons()
-eturn(4, 3)                                   -- turning while held (pad 4 is down): root
+for _ = 1, 3 do                               -- turning while held (pad 4 is down): type
+  controller.onEncoderTurn{id = 4, index = 4, page = 1, increment = 1, value = 8192, scaled = 64, is_held = false}
+end
 E.run(300)
-check(#ons() == n4 and offs() == 0, "hold + turn: the held chord keeps ringing, nothing new plays")
+check(#ons() == n4 and offs() == 0 and store.data.e[4] ~= nil and store.data.e[4] // 64 == (store.data.e[4] // 64),
+  "hold + turn: the held chord keeps ringing, nothing new plays")
 lift(1, 4)
 check(offs() == n4, "letting go releases it")
 -- edits persist across reload, labels included
