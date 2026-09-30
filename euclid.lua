@@ -306,6 +306,12 @@ function page.onVarChange()
 end
 
 function page.onInit()
+  -- A scene slot's variables outlive script changes: another script's (or an
+  -- older layout's) would fill the 32 slots. This script's own stamp, or start clean.
+  if var.get("ver") ~= 11 then
+    var.deleteAll()
+    var.register("ver", "int", 11)
+  end
   for k = 1, 5 do var.register(SET[k], "int", DEF[k]) end
   pull()
   clock.listen(true, 96)

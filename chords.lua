@@ -338,6 +338,12 @@ function page.onVarChange()
 end
 
 function page.onInit()
+  -- A scene slot's variables outlive script changes: another script's (or an
+  -- older layout's) would fill the 32 slots. This script's own stamp, or start clean.
+  if var.get("ver") ~= 31 then
+    var.deleteAll()
+    var.register("ver", "int", 31)
+  end
   pull()
   if type(store.data.e) ~= "table" then store.data.e = {} end
   ED = store.data.e

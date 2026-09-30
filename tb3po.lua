@@ -355,7 +355,7 @@ function page.onPageChange(prev, curr)
   drawAll(curr)                       -- getPage() may not report curr yet
 end
 
-local VER = 2                         -- bump when the variable layout changes
+local VER = 52                        -- this script's layout stamp (unique per script); bump when it changes
 
 local function pull()
   local any = false

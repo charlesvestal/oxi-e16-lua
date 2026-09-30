@@ -156,4 +156,12 @@ collectgarbage("restart")
 midi.sendCC, leds.updateByIndex = sendCC, upd
 check(calls > 50 and grown < 256, ("no per-tick garbage (%.0f B over 10 s, %d CCs)"):format(grown, calls))
 
+-- another script's variables in the slot (32 max) are cleared, not overflowed
+E.store = {}
+for i = 1, 31 do E.store["old" .. i] = 1 end
+local okF = pcall(E.load, "modseq.lua")
+local nF = 0
+for _ in pairs(E.store) do nF = nF + 1 end
+check(okF and E.store.old1 == nil and E.store.ver ~= nil, "foreign variables are cleared on load (" .. nF .. " now)")
+
 E.done()

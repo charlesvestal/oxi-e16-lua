@@ -316,4 +316,12 @@ midi.sendMidi, leds.updateByIndex = sendMidi, upd
 check(calls > 50 and grew < 256, ("no per-tick garbage (%.0f B over 10 s, %d notes)"):format(grew, calls))
 press(3)
 
+-- another script's variables in the slot (32 max) are cleared, not overflowed
+E.store = {}
+for i = 1, 31 do E.store["old" .. i] = 1 end
+local okF = pcall(E.load, "euclid.lua")
+local nF = 0
+for _ in pairs(E.store) do nF = nF + 1 end
+check(okF and E.store.old1 == nil and E.store.ver ~= nil, "foreign variables are cleared on load (" .. nF .. " now)")
+
 E.done()

@@ -22,7 +22,7 @@ local function pattern()                  -- note-ons of one 16-step bar, "note@
 end
 local function notes(p) local c = 0; for _ in p:gmatch("@") do c = c + 1 end; return c end
 
-E.store.seed, E.store.ver = 0x3F2A, 2        -- a known seed (current layout)
+E.store.seed, E.store.ver = 0x3F2A, 52       -- a known seed (current layout)
 E.load("tb3po.lua")
 check(E.listening and E.res == 96 and E.bpm == 120 and E.rate == 10, "clock at 24 ticks per quarter, tempo 120, 10 ms updates")
 E.run(60)

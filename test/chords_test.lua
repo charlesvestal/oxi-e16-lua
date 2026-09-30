@@ -346,4 +346,10 @@ controller.onEncoderTurn{id = 255, index = 1, page = 3, increment = 1, value = 0
 controller.onEncoderPress{id = 255, index = 1, page = 3, value = 0, scaled = 0}
 check(true, "ignores id 255 events")
 
+-- another script's variables in the slot (32 max) are cleared, not overflowed
+E.store = {}
+for i = 1, 31 do E.store["old" .. i] = 1 end
+local okF = pcall(E.load, SCRIPT)
+check(okF and E.store.old1 == nil and E.store.ver == 31, "foreign variables are cleared on load")
+
 E.done()
