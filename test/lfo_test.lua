@@ -86,6 +86,15 @@ press(1, 18)                                 -- LFO 1: 0.4 Hz at 120 BPM = 5 bea
 check(E.labels[2] == "1Br", "sync picks the nearest division (" .. E.labels[2] .. ")")
 turn(1, 2, 1); turn(1, 2, 1)
 check(E.labels[2] == "1/4", "sync division 1/4 (" .. E.labels[2] .. ")")
+do                                           -- every division label, slowest to fastest
+  local got = {}
+  for _ = 1, 12 do turn(1, 2, -1) end
+  for _ = 1, 12 do got[#got + 1] = E.labels[2]; turn(1, 2, 1) end
+  local want = "8Br 4Br 2Br 1Br 1/2 1/4 4T 1/8 8T 1/16 16T 1/32"
+  check(table.concat(got, " ") == want, "all 12 sync labels: " .. table.concat(got, " "))
+  for _ = 1, 6 do turn(1, 2, -1) end         -- back to 1/4
+end
+check(E.labels[2] == "1/4", "back at 1/4 (" .. E.labels[2] .. ")")
 for _ = 1, 2 do turn(1, 3, 25) end           -- LFO 1 depth +100
 turn(1, 5, -1)                               -- LFO 2 shape Tri -> Sin
 for _ = 1, 2 do turn(1, 7, 25) end           -- LFO 2 depth +100

@@ -80,9 +80,11 @@ local FULL = 16383
 local C_ON, C_PLAY, C_ACC, C_SLIDE = 0, 50, 85, 25   -- LED color: index into the app's 100-color palette
 local NT = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
 local SCL = {"023578A", "024579B", "023579A", "013578A", "024579A", "023578B", "0357A", "02479"}
-local SCN = {"Min", "Maj", "Dor", "Phr", "Mix", "HMin", "PMin", "PMaj"}
 local DIVS = {1, 2, 3, 4, 6, 8}
-local DL = {"1/4", "1/8", "8T", "1/16", "D5", "16T", "D7", "1/32"}
+-- Label words, 4 characters each (one string costs far less memory than tables):
+-- 1-8 scale names, 9-16 step sizes, 17-19 slide modes, 20-32 label prefixes per setting.
+local W = "Min Maj Dor Phr Mix HMinPMinPMaj1/4 1/8 8T  1/16D5  16T D7  1/32Off Leg CC65D   L           Oct T   M                   Ch  O   "
+local function word(i) return (W:sub(i * 4 - 3, i * 4):gsub(" ", "")) end
 
 -- Settings: page 1 turns (1-8), page 2 turns (9-13), and the seed (14).
 local SN = {"dens", "len", "root", "scale", "oct", "tr", "mut", "bpm",
@@ -202,9 +204,9 @@ local function drawAll(pg)
       local k = pg == 1 and i or i + 8
       local v = SV[k]
       leds.updateByIndex(i, (v - LO[k]) * FULL // (HI[k] - LO[k]), C_ON)
-      slots.update(i, k == 3 and NT[v + 1] or k == 4 and SCN[v]
-        or k == 9 and DL[v] or k == 11 and ({"Off", "Leg", "CC65"})[v + 1]
-        or k == 13 and v == 0 and "All" or ({"D", "L", "", "", "Oct", "T", "M", "", "", "", "", "Ch", "O"})[k]
+      slots.update(i, k == 3 and NT[v + 1] or k == 4 and word(v)
+        or k == 9 and word(v + 8) or k == 11 and word(v + 17)
+        or k == 13 and v == 0 and "All" or word(k + 19)
         .. ((k == 1 or k == 6) and v > (k == 1 and 7 or 0) and "+" or "")
         .. (k == 1 and v - 7 or k == 5 and v + 2 or v) .. (k == 10 and "%" or ""))
     end

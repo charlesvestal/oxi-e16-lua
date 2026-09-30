@@ -4,35 +4,42 @@
 -- The title names the screen; photograph each one.
 --   Layout      each label is its slot number: where the 16 slots sit
 --   Chr a-b     each label shows 4 consecutive character codes, so slot i
---               starts at code a + 4*(i-1) (4 screens: 32-95 ... 224-255)
---   Disp        label dN: encoder N+1's turn uses display mode N (set in the
---               scene). Its value line shows that format; turn it to see more.
+--               starts at code a + 4*(i-1) (32-95, 96-159)
+--   Icon a-b    one code per slot: its number, then its glyph (128-143, 144-159)
+--   Mono        fixed-width and space test: rows should line up column by column
+--   Width       each row starts with "####"; the other slots are "#xx#" for a
+--               candidate x (space, 146, 154, 156, = + : / \ _ o and 135). A
+--               slot as wide as "####" means x is as wide as "#".
 --   Anim Nms    "####" and a white ring step one slot per tick. Turn encoder 1
 --               to change the tick. Watch for flicker, tearing or lag.
--- Every value starts at mid-scale (8192).
 
---@assign id=1 abbr="E1" dis=0
---@assign id=2 abbr="E2" dis=1
---@assign id=3 abbr="E3" dis=2
---@assign id=4 abbr="E4" dis=3
---@assign id=5 abbr="E5" dis=4
---@assign id=6 abbr="E6" dis=5
---@assign id=7 abbr="E7" dis=6
---@assign id=8 abbr="E8" dis=7
---@assign id=9 abbr="E9" dis=8
---@assign id=10 abbr="E10" dis=9
---@assign id=11 abbr="E11" dis=10
---@assign id=12 abbr="E12" dis=11
---@assign id=13 abbr="E13" dis=12
---@assign id=14 abbr="E14" dis=13
---@assign id=15 abbr="E15" dis=14
---@assign id=16 abbr="E16" dis=15
+--@assign id=1 abbr="E1"
+--@assign id=2 abbr="E2"
+--@assign id=3 abbr="E3"
+--@assign id=4 abbr="E4"
+--@assign id=5 abbr="E5"
+--@assign id=6 abbr="E6"
+--@assign id=7 abbr="E7"
+--@assign id=8 abbr="E8"
+--@assign id=9 abbr="E9"
+--@assign id=10 abbr="E10"
+--@assign id=11 abbr="E11"
+--@assign id=12 abbr="E12"
+--@assign id=13 abbr="E13"
+--@assign id=14 abbr="E14"
+--@assign id=15 abbr="E15"
+--@assign id=16 abbr="E16"
 --@assign id=17 abbr="Prev" name="Previous screen" p=true
 --@assign id=32 abbr="Next" name="Next screen" p=true
 -- pages: Glyphs
 
-local N = 7                         -- screens: layout, 4 x chars, disp, anim
+local N = 8                         -- screens: layout, 2 x chars, 2 x icons, mono, width, anim
 local RATE = {20, 30, 50, 80, 120, 200}
+local MONO = {"####", "####", "####", "####",
+              "iiii", "MMMM", "#  #", " ## ",
+              "|/\\-", "____", "#   ", "   #",
+              "#.#.", ".#.#", "  ##", "##  "}
+local WID = {32, 146, 154, 156, 61, 43, 58, 47, 92, 95, 111, 135}
 local m, r, tick = 1, 3, 0
 local title                         -- pending header text
 local on = true                     -- our page is shown
@@ -44,17 +51,26 @@ local function show()
   if m == 1 then
     t = "Layout"
     for i = 1, 16 do slots.update(i, "" .. i) end
-  elseif m <= 5 then
+  elseif m <= 3 then
     local c0 = 32 + 64 * (m - 2)
-    t = "Chr " .. c0 .. "-" .. math.min(c0 + 63, 255)
+    t = "Chr " .. c0 .. "-" .. c0 + 63
     for i = 1, 16 do
-      local a, s = c0 + 4 * (i - 1), ""
-      for c = a, math.min(a + 3, 255) do s = s .. string.char(c) end
-      slots.update(i, s)
+      local a = c0 + 4 * (i - 1)
+      slots.update(i, string.char(a, a + 1, a + 2, a + 3))
     end
+  elseif m <= 5 then
+    local c0 = 128 + 16 * (m - 4)
+    t = "Icon " .. c0 .. "-" .. c0 + 15
+    for i = 1, 16 do slots.update(i, c0 + i - 1 .. string.char(c0 + i - 1)) end
   elseif m == 6 then
-    t = "Disp"
-    for i = 1, 16 do slots.update(i, "d" .. i - 1) end
+    t = "Mono"
+    for i = 1, 16 do slots.update(i, MONO[i]) end
+  elseif m == 7 then
+    t = "Width"
+    for i = 1, 16 do
+      local x = i % 4 == 1 and "#" or string.char(WID[i - (i + 3) // 4])
+      slots.update(i, "#" .. x .. x .. "#")
+    end
   else
     t = "Anim " .. RATE[r] .. "ms"
     for i = 1, 16 do slots.update(i, "") end
@@ -97,6 +113,5 @@ function page.onPageChange(prev, curr)
 end
 
 function page.onInit()
-  for i = 1, 16 do controller.set(i, "v", 8192) end
   show()
 end

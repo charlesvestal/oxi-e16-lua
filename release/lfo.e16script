@@ -67,10 +67,12 @@
 local N, PAGES, SETP = 16, 4, 5
 local FULL = 16383
 local C_ON, C_OFF, C_FRZ = 18, 34, 50   -- LED colors (0-99 in the app's 10x10 grid): blue, white, pink
-local SHN = {"Sin", "Tri", "SawU", "SawD", "Sqr", "S&H"}
+-- Label words, 4 characters each (one string costs far less memory than tables):
+-- 1-6 shapes, 7-18 sync divisions.
+local W = "Sin Tri SawUSawDSqr S&H 8Br 4Br 2Br 1Br 1/2 1/4 4T  1/8 8T  1/1616T 1/32"
+local function word(i) return (W:sub(i * 4 - 3, i * 4):gsub(" ", "")) end
 -- Sync divisions: beats per cycle, and labels. Rate values 85-96 select them.
 local DIVB = {32, 16, 8, 4, 2, 1, 2 / 3, 1 / 2, 1 / 3, 1 / 4, 1 / 6, 1 / 8}
-local DIVL = {"8Br", "4Br", "2Br", "1Br", "1/2", "1/4", "4T", "1/8", "8T", "1/16", "16T", "1/32"}
 
 -- Per LFO: shape 1-6, rate (0-84 free, 85-96 synced), depth -100..100 (even),
 -- center, CC, channel 1-16, on, freeze, Dest view, phase 0-1, S&H value, last CC sent.
@@ -138,10 +140,10 @@ local function draw(t, full, pg)
     lab(b + 2, (CC[t] < 100 and "CC" or "C") .. CC[t])
   else
     set(b + 1, (SH[t] - 1) * FULL // 5, c)
-    lab(b + 1, SHN[SH[t]])
+    lab(b + 1, word(SH[t]))
     if r > 84 then
       set(b + 2, (r - 85) * FULL // 11, c)
-      lab(b + 2, DIVL[r - 84])
+      lab(b + 2, word(r - 78))
     else
       -- whole-number formatting only: the device's printf may not support %f
       local h = hz(t)

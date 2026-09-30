@@ -281,6 +281,8 @@ Measured on firmware 1.2.0 with probe scenes (the tools are in `tools/`):
 | tb3po | 6.0 KB | 42.5 KB | 0.1 KB |
 | example step sequencer | 6.2 KB | 43.6 KB | −1.1 KB (fails to load) |
 
+On firmware 1.3.0 the limit measured a little lower (TB-3PO stopped loading about 0.1 KB
+above its old peak), so TB-3PO and LFO were trimmed by about 1 KB each; see the notes.
 The peaks marked ~ are for the clock versions. They're estimated from each script's growth in a
 64-bit build of `e16host`, because the 32-bit build needs Docker. TB-3PO was trimmed back to its
 old peak. Firmware 1.3 may also give Lua a different budget, so check the tight ones on hardware

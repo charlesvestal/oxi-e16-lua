@@ -51,6 +51,11 @@ Source tags:
 - Manual controls get every turn, even at the ends of the range, with `increment` still showing
   the direction **[1.3]**. That may make the end-stop write-back below unnecessary.
 - `controller.get(id, key)` reads a destination's properties **[1.3]**.
+- **The load limit on 1.3.0 is a little lower than on 1.2.0.** TB-3PO failed to load at a 64-bit
+  `e16host` load peak of 43,968 B, while LFO loads at 43,840 B. **[HW]** (The same TB-3PO had loaded
+  at 43,920 B earlier.) A failed load looks like the scene's default header ("TB-3PO-Acid") and
+  plain labels, and `onInit` never runs. Constant tables of strings are the cheapest thing to cut:
+  one fixed-width string read with `sub` saved about 1.2 KB in TB-3PO and 0.9 KB in LFO.
 
 ## Environment
 
@@ -156,6 +161,33 @@ Source tags:
   the scene's encoder colors don't shift it. For example, 6 = dark blue, 18 = light blue, 34 = white, 50 = pink.
   **[HW]**
 - `value` is 0–16383, and floats are floored. There's a batch form: `leds.updateByIndex({{i, v, c}, …})`. **[GUIDE]**
+
+## Screen (from `glyphs.lua`)
+
+- Lua has no drawing API. What it can reach is the title plus the 16 slot labels, shown as a **4×4 grid
+  of up to 4 characters each** (rows are encoders 1–4, 5–8, 9–12, 13–16), with gaps between columns.
+  In this view no value line appears under the labels. **[HW]**
+- The font is **proportional** (`iiii` is much narrower than `MMMM`). Spaces are kept, and the whole
+  label is **centered** as a block: `#   ` puts the `#` at the left of its slot, `   #` at the right. **[HW]**
+- Widths against `#` (Width screen): `= + / \ _ o` and icon 135 (■) are **the same width as `#`**. A space is
+  about ⅔ of that (3 spaces ≈ 2 `#`), `:` is narrow, and the blank codes 146, 154 and 156 have
+  **zero width**. There's no full-width blank, so a label only keeps its columns in place if it is all
+  same-width glyphs or all spaces. **[HW]**
+- ASCII 32–126 all draw (`{` looks like `(`). Codes 128–153 are firmware icons, and **154–255 draw
+  nothing**: **[HW]**
+
+  | Code | Glyph | Code | Glyph | Code | Glyph |
+  |---|---|---|---|---|---|
+  | 128 | → | 137 | ⏪ | 146 | (blank) |
+  | 129 | ← | 138 | ⏮ | 147 | small * |
+  | 130 | ↑ | 139 | ⏭ | 148 | ' |
+  | 131 | ↓ | 140 | ▸ | 149 | " |
+  | 132 | ⊘ | 141 | ◂ | 150 | ° |
+  | 133 | ▶ | 142 | lock | 151 | tall ‖ |
+  | 134 | ⏸ | 143 | unlock | 152 | lock (alt) |
+  | 135 | ■ | 144 | ┌ | 153 | die |
+  | 136 | ⏩ | 145 | ┐ | | |
+- Rewriting every label at a **20 ms** tick (50 per second) animates smoothly. **[HW]**
 
 ## Labels and title
 
