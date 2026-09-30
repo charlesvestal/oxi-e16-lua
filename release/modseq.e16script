@@ -5,7 +5,7 @@
 --   turn: step value 0-127 | push: glide on/off (ramp to the next step's value)
 --   Rings show the values; the playhead lights up, glide steps have their own
 --   color, and steps past the length go dark. Labels show values ("~64" = glide).
--- Page 2, settings (push encoder 1 = play/stop):
+-- Page 2, settings (push encoder 7 = play/stop):
 --   BPM 20-300 | step 1/4 1/8 8T 1/16 16T 1/32 | length 1-16 | CC number |
 --   MIDI channel | output port (0 = all)
 --
@@ -50,12 +50,12 @@
 --@assign id=16 abbr="S16" name="Step 16" l=0 h=127 manual=true g=16
 --@assign id=32 abbr="S16" name="Glide 16" p=true g=16
 --@assign id=33 abbr="BPM"  name="Tempo"        l=0 h=127 manual=true g=17
---@assign id=49 abbr="BPM"  name="Play/Stop"    p=true g=17
 --@assign id=34 abbr="Step" name="Step size"    l=0 h=127 manual=true g=18
 --@assign id=35 abbr="Len"  name="Length"       l=0 h=127 manual=true g=19
 --@assign id=36 abbr="CC"   name="CC number"    l=0 h=127 manual=true g=20
 --@assign id=37 abbr="Chan" name="MIDI channel" l=0 h=127 manual=true g=21
 --@assign id=38 abbr="Out"  name="Output port"  l=0 h=127 manual=true g=22
+--@assign id=55 abbr="Play" name="Play/Stop"    p=true g=23
 -- pages: Mod,Set
 
 local FULL = 16383
@@ -112,6 +112,8 @@ local function drawAll(pg)
         or k == 4 and (v < 100 and "CC" or "C") .. v or k == 5 and "Ch" .. v
         or (v == 0 and "All" or "O" .. v))
     end
+    leds.updateByIndex(7, run and FULL or 0, C_PLAY)
+    slots.update(7, run and "Stop" or "Play")
   end
   setTitle()
 end
@@ -162,7 +164,7 @@ function clock.onPulse(b, p)
 end
 
 -- Turn ids 1-16 set step values, 33-38 the settings; pushes 17-32 toggle
--- glide, 49 is play/stop.
+-- glide, 55 is play/stop.
 function controller.onEncoderTurn(e)
   local id, d = e.id, e.increment
   -- 0 = not a physical turn (recorder, random, group); 255 = non-script control
@@ -191,7 +193,7 @@ function controller.onEncoderTurn(e)
 end
 
 function controller.onEncoderPress(e)
-  if e.id == 49 then
+  if e.id == 55 then
     if run then                       -- stop; external transport keeps running without us
       run = false
       if tp and tp > 0 then clock.stopInternal(); tp = nil end

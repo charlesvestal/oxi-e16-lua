@@ -169,7 +169,7 @@ set(7, 1)                             -- channel 2: releases the sounding chord 
 E.sent = {}; pad(1, 3); E.run(40)
 check(ons()[1].st == 0x91, "channel 2")
 E.page = 12
-controller.onEncoderPress{id = 49, index = 1, page = 12, value = 8192, scaled = 64}
+controller.onEncoderPress{id = 57, index = 9, page = 12, value = 8192, scaled = 64}
 local cc = E.msgs(0xB1, 123)
 check(#cc == 1, "panic sends CC 123 and note-offs")
 set(7, -1)
@@ -180,46 +180,31 @@ E.load(SCRIPT)
 E.show(12)
 check(E.labels[3] == "V80", "settings persist across reload (" .. E.labels[3] .. ")")
 
--- turning a pad sets the length
-local function len(n)
-  E.page = 1
-  for _ = 1, math.abs(n) do
-    controller.onEncoderTurn{id = 5, index = 5, page = 1, increment = n > 0 and 1 or -1,
-      value = 8192, scaled = 64, is_held = false}
-  end
-end
-E.show(1); E.run(60)
-local l5 = E.labels[5]
-len(-40)
-check(E.labels[5] == "Held", "pad knob: length bottoms out at Held (" .. E.labels[5] .. ")")
-len(1)
-check(E.labels[5] == "Ltch", "pad knob: then Ltch (" .. E.labels[5] .. ")")
-E.run(1200)
-check(E.labels[5] == l5, "the pad's label comes back after a second (" .. E.labels[5] .. ")")
-len(5)
-check(E.labels[5] == "0.5s", "pad knob: length 0.5 s (" .. E.labels[5] .. ")")
-E.sent = {}; pad(1, 2); E.run(300)
-local on = #ons()
-E.run(400)
--- note-off is sent as note-on with velocity 0
-local function offs()
+-- length (settings encoder 4): Held, Ltch, 0.1-4 s
+local function offs()                         -- note-off is sent as note-on with velocity 0
   local n = 0
   for _, m in ipairs(E.sent) do if m.st & 0xF0 == 0x90 and m.d2 == 0 then n = n + 1 end end
   return n
 end
+set(4, -40)
+check(E.labels[4] == "Held", "length bottoms out at Held (" .. E.labels[4] .. ")")
+set(4, 1)
+check(E.labels[4] == "Ltch", "then Ltch (" .. E.labels[4] .. ")")
+set(4, 5)
+E.sent = {}; pad(1, 2); E.run(300)
+local on = #ons()
+E.run(400)
 check(on > 0 and offs() == on, "a 0.5 s length releases the chord (" .. on .. " on, " .. offs() .. " off)")
-len(-5)
+set(4, -5)
 E.sent = {}; pad(1, 3); E.run(2000)
 check(#ons() > 0 and offs() == 0, "Ltch keeps the chord sounding")
-len(3)
+set(4, 3)
 E.run(400)
 check(offs() == #ons(), "turning up from Ltch releases the sounding chord")
-E.show(12)
-check(E.labels[4] == "0.3s", "the settings page shows the same length (" .. E.labels[4] .. ")")
-len(-3)
+set(4, -3)
 
 -- Held: the chord sounds from push to release
-E.show(1); len(-1)
+set(4, -1); E.show(1)
 check(E.store.gate == -1, "Held")
 E.sent = {}; pad(1, 4); E.run(1500)
 check(#ons() > 0 and offs() == 0, "Held: sounding while the pad is down")
@@ -243,6 +228,101 @@ lift(1, 8, 100)
 check(offs() == #ons(), "releasing the sounding pad stops it")
 E.sent = {}; pad(12, 1); lift(12, 1)          -- settings-page push: no pad
 check(true, "releases on the settings page are ignored")
+
+-- editing: turn = chord type, hold + turn = root
+local IVS = {"047", "037", "036", "048", "027", "057", "0479", "0379", "047A", "047B", "037A", "037B", "036A",
+  "0369", "057A", "0247", "0237", "02479", "02379", "0247A", "0247B", "0237A", "0257A", "02457A", "02357A",
+  "02457B", "02479A", "02379A", "02479B", "0147A", "0347A", "0467B", "0137A", "07"}
+local function eturn(i, n, held)
+  if held then pad(1, i) end
+  for _ = 1, math.abs(n) do
+    controller.onEncoderTurn{id = i, index = i, page = 1, increment = n > 0 and 4 or -4, value = 8192, scaled = 64, is_held = false}
+  end
+  if held then lift(1, i) end
+end
+local function playNotes(i)
+  E.sent = {}; pad(1, i); E.run(30); lift(1, i); E.run(20)
+  local t = {}
+  for _, m in ipairs(ons()) do t[#t + 1] = m.d1 end
+  table.sort(t)
+  return t
+end
+set(4, -40); set(5, -40); set(1, -40); set(1, 12); set(2, -10); set(2, 2)   -- Held, no strum, T0, Oc0
+E.show(1); E.run(30)
+local origLabel, origNotes = E.labels[1], table.concat(playNotes(1), ",")
+eturn(1, 1)
+check(E.labels[1] ~= origLabel and next(E.store.e or store.data.e) ~= nil, "turning a pad changes its type (" .. origLabel .. " -> " .. E.labels[1] .. ")")
+eturn(1, -1)
+check(E.labels[1] == origLabel and next(store.data.e) == nil and table.concat(playNotes(1), ",") == origNotes,
+  "turning back restores the original and its hand voicing")
+-- every type: the bass is the root, the pitch classes are the type's, all in range
+local bass0 = playNotes(1)[1]
+local okT, why = true, ""
+for q = 1, #IVS do
+  eturn(1, 1)
+  local n = playNotes(1)
+  local root = n[1] % 12
+  local got = {}
+  local lab = E.labels[1]
+  -- which type is it now? match the pitch classes against the table
+  for _, v in ipairs(n) do got[(v - root) % 12] = true end
+  local match = false
+  for _, iv in ipairs(IVS) do
+    local w = {}
+    for c in iv:gmatch(".") do w[tonumber(c, 16)] = true end
+    local same = true
+    for k in pairs(w) do if not got[k] then same = false end end
+    for k in pairs(got) do if not w[k] then same = false end end
+    if same then match = true end
+  end
+  local edited = store.data.e[1] ~= nil      -- (the original, once per cycle, keeps its hand voicing)
+  if not match or edited and (math.abs(n[1] - bass0) > 6 or n[#n] - n[2 > #n and 1 or 2] > 12 or #n < 2) then
+    okT, why = false, lab .. " " .. table.concat(n, ",")
+  end
+end
+check(okT, "every chord type voices its own notes, root in the bass near the original (" .. why .. ")")
+check(E.labels[1] == origLabel and store.data.e[1] == nil, "a full cycle of types wraps back to the original")
+-- root: hold + turn moves it a semitone per event (not per acceleration step)
+local r0 = playNotes(2)[1]
+eturn(2, 2, true)
+local r2 = playNotes(2)
+check((r2[1] - r0) % 12 == 2 and math.abs(r2[1] - r0) <= 6, "hold + turn: root up 2 semitones (" .. r0 .. " -> " .. r2[1] .. ")")
+-- editing a sounding chord re-strikes it once the turning pauses (Ltch)
+set(4, 1); E.show(1)
+E.sent = {}; pad(1, 3); E.run(50)
+local n1 = #ons()
+eturn(3, 1); E.run(80)
+check(#ons() == n1, "no re-strike while still turning")
+E.run(150)
+check(#ons() > n1, "re-strikes with the new chord after a pause")
+pad(1, 3); E.run(20)                          -- Ltch: stop it
+set(4, -1); E.show(1)
+-- edits persist across reload, labels included
+local l2 = E.labels[2]
+E.load(SCRIPT); E.run(30)
+check(E.labels[2] == l2 and store.data.e[2] ~= nil, "edits persist across reload (" .. l2 .. ")")
+-- the settings Reset ring shows how much is edited; holding Reset clears everything
+E.show(12)
+check(E.labels[9] == "Pnic" and E.labels[10] == "Rset", "Panic and Reset knobs")
+E.press(58); E.release(58, 500)
+check(next(store.data.e) ~= nil, "a short push on Reset does nothing")
+E.press(58); E.release(58, 2100)
+check(next(store.data.e) == nil, "holding Reset for 2 s clears all edits")
+E.show(1)
+check(E.labels[1] == origLabel, "labels back to the originals")
+-- every pad edited still fits the 1 KiB store
+for pg = 1, 11 do
+  E.show(pg)
+  for i = 1, 16 do
+    E.page = pg
+    controller.onEncoderTurn{id = i, index = i, page = pg, increment = 1, value = 8192, scaled = 64, is_held = false}
+  end
+end
+local nE = 0
+for _ in pairs(store.data.e) do nE = nE + 1 end
+check(nE >= 170 and store.size() <= 1024, ("all pads edited: %d edits, store %d of 1024 bytes"):format(nE, store.size()))
+E.load(SCRIPT)
+E.show(12); E.press(58); E.release(58, 2100)
 
 -- ignores foreign events
 controller.onEncoderTurn{id = 255, index = 1, page = 3, increment = 1, value = 0, scaled = 0, is_held = false}

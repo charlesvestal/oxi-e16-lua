@@ -16,7 +16,7 @@ push for Mute, Invert, Play/Stop and Resync.
 
 - Follows external MIDI clock and transport (Start, Continue, Stop). With no clock running,
   Play starts the E16's internal clock at the scene's BPM.
-- Page 2: BPM, step size (1/4 to 1/32, with triplets), gate, MIDI channel, output port.
+- Page 2: BPM, step size (1/4 to 1/32, with triplets), gate, MIDI channel, output port, Play/Stop.
 - Defaults to a GM drum kit on channel 10. Settings are saved in the scene.
 
 To send clock to other gear, choose an output on the Internal Clock alt action first.
@@ -39,7 +39,7 @@ triangle, saws, square, S&H), Rate, Depth ±100 % and Center.
 - Synced LFOs lock to the running clock, internal or external, and restart on Start. When the
   transport is stopped, they run at the scene's BPM.
 - Push Dest to set each LFO's MIDI channel and CC. Other pushes: on/off, freeze.
-- Page 5: output port, BPM, restart all, all off.
+- Page 5: output port, BPM, all off, restart all.
 
 Source and docs: https://github.com/charlesvestal/oxi-e16-lua (MIT)
 
@@ -56,9 +56,10 @@ Neo Soul, Lofi R&B, Indie Jazz, Detroit, Lush Pads, Pop Piano, Impressionist and
 The labels show the chord names.
 
 - Push a pad to play its chord. By default it sounds while you hold the pad.
-- Turn any pad to set the length: Held, Ltch (latch until the next pad) or 0.1–4 s.
-- Page 12: transpose, octave, velocity, length, strum time and direction, MIDI channel, output
-  port. Push encoder 1 for all notes off.
+- Make your own layout: turn a pad to change its chord type (34 types), or hold it and turn to
+  change the root. Edited chords are voiced to fit the set, and edits are saved in the scene.
+- Page 12: transpose, octave, velocity, length (Held, Latch or 0.1–4 s), strum time and
+  direction, MIDI channel, output port, Panic, and Reset (clears your edits).
 
 The chord sets are original, voiced to stay in one register and move smoothly from pad to pad.
 
@@ -76,7 +77,7 @@ One step per encoder. Turn to set the step's CC value; push to glide to the next
 
 - Follows external MIDI clock and transport; otherwise Play starts the internal clock.
 - Glides move every clock tick (24 per quarter note).
-- Page 2: BPM (push = Play/Stop), step size, length 1–16, CC number, MIDI channel, output port.
+- Page 2: BPM, step size, length 1–16, CC number, MIDI channel, output port, Play/Stop.
 
 Source and docs: https://github.com/charlesvestal/oxi-e16-lua (MIT)
 

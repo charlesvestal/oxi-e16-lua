@@ -129,7 +129,7 @@ E.show(2); sturn(2, 1); E.show(1)
 
 -- tempo change while playing applies to the running internal clock
 E.show(2)
-E.press(49)                                     -- settings page play/stop
+E.press(54)                                     -- settings page play/stop
 E.run(500)
 sturn(1, 8); sturn(1, 8); sturn(1, 8); sturn(1, 8); sturn(1, 8)   -- 160
 check(E.bpm == 160 and E.store.bpm == 160, "BPM encoder sets the internal tempo while playing")
@@ -138,7 +138,7 @@ E.run(3000)
 local n160 = #noteOns(t0, E.now, 36)
 check(n160 >= 31 and n160 <= 33, "plays at the new tempo (" .. n160 .. " sixteenths in 3 s at 160)")
 for _ = 1, 5 do sturn(1, -8) end
-E.press(49); E.run(0)
+E.press(54); E.run(0)
 E.show(1)
 
 -- external clock: Start restarts, the header shows its tempo, Stop stops
@@ -259,7 +259,7 @@ press(3); E.run(0)
 -- settings page
 E.show(2)
 check(E.labels[1] == "140" and E.labels[2] == "1/16" and E.labels[3] == "G60"
-  and E.labels[4] == "Ch10" and E.labels[5] == "All" and E.labels[6] == nil,
+  and E.labels[4] == "Ch10" and E.labels[5] == "All" and E.labels[6] == "Play",
   "settings labels: " .. table.concat({tostring(E.labels[1]), tostring(E.labels[2]), tostring(E.labels[3]),
     tostring(E.labels[4]), tostring(E.labels[5]), tostring(E.labels[6])}, " "))
 sturn(1, 4); E.run(100)
@@ -282,10 +282,10 @@ sturn(5, 1)
 check(E.store.out == 1 and E.labels[5] == "O1", "output encoder")
 sturn(5, -1)
 sturn(6, 1)
-check(E.labels[6] == nil, "encoder 6 does nothing")
-E.press(49); E.run(100)
-check(E.title == "EUC > 120" and E.tp == 2, "settings push starts playback (" .. E.title .. ")")
-E.press(49); E.run(100)
+check(E.labels[6] == "Play", "turning encoder 6 does nothing")
+E.press(54); E.run(100)
+check(E.title == "EUC > 120" and E.tp == 2 and E.labels[6] == "Stop", "settings Play knob starts playback (" .. E.title .. ")")
+E.press(54); E.run(100)
 check(E.title == "EUC | 120" and E.tp == nil, "settings push stops playback")
 E.show(1)
 check(E.labels[1] == "L7", "returning to page redraws")

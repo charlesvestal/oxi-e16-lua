@@ -20,7 +20,7 @@ check(#E.sent == 0, "silent while stopped")
 -- play: one CC per step, stepping through the values
 E.show(2)
 E.sent = {}
-E.press(49)
+E.press(55)
 E.run(125 * 16 - 1)
 check(E.title == "MOD > 120", "title playing")
 local v = vals(E.msgs(0xB0, 74))
@@ -98,7 +98,7 @@ E.run(200)
 check(#E.msgs(0xB0, 64) > 0 and #E.msgs(0xB0, 74) == 0, "sends on the new CC")
 
 -- stop
-E.press(49)
+E.press(55)
 E.run(60)
 E.sent = {}
 E.run(1000)
@@ -120,7 +120,7 @@ E.extContinue(); E.run(170)
 local now
 for i = 1, 16 do if E.rings[i].c == 50 then now = i end end
 check(now == at % 16 + 1, "Continue resumes from the step it stopped on (" .. tostring(at) .. " -> " .. tostring(now) .. ")")
-E.show(2); E.press(49); E.run(0)          -- Play/Stop while external: pauses
+E.show(2); E.press(55); E.run(0)          -- Play/Stop while external: pauses
 E.sent = {}
 E.run(500)
 check(#E.sent == 0 and E.tp == 0, "Play/Stop pauses, external transport keeps running")
@@ -147,7 +147,7 @@ local sendCC, upd = midi.sendCC, leds.updateByIndex
 local calls = 0
 midi.sendCC = function() calls = calls + 1 end
 leds.updateByIndex = function() end
-E.show(2); E.press(49); E.run(100)       -- (starting draws the title once)
+E.show(2); E.press(55); E.run(100)       -- (starting draws the title once)
 collectgarbage(); collectgarbage("stop")
 local c0 = collectgarbage("count")
 E.run(10000)

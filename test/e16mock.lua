@@ -100,6 +100,33 @@ system = {
   end,
 }
 
+-- Store: store.data survives reloads (a scene exit saves it). size() estimates
+-- the saved size like the guide describes; the device keeps at most 1024 bytes.
+local function copy(v)
+  if type(v) ~= "table" then return v end
+  local t = {}
+  for k, x in pairs(v) do t[copy(k)] = copy(x) end
+  return t
+end
+local function ssize(v)
+  local t = type(v)
+  if t == "boolean" then return 1 end
+  if t == "string" then return #v + 2 end
+  if t == "number" then
+    assert(math.type(v) == "integer", "store: only integers here (" .. tostring(v) .. ")")
+    return (v >= 0 and v < 128) and 1 or v < 16384 and v > -16384 and 2 or 5
+  end
+  assert(t == "table", "store can't hold a " .. t)
+  local n = 2
+  for k, x in pairs(v) do n = n + ssize(k) + ssize(x) end
+  return n
+end
+store = {
+  use = function() end,
+  size = function() return ssize(store.data) end,
+  capacity = function() return 1024 end,
+}
+
 -- Clock: transport callbacks are queued and delivered on the next clock pass
 -- (the next M.run), before that pass's first pulse, as the guide describes.
 local function cb(name, ...) M.q[#M.q + 1] = {name, ...} end
@@ -179,6 +206,11 @@ end
 -- Load (or reload, like a scene re-entry) a script. Vars survive in M.store.
 -- Loading turns clock listening off and stops an internal clock Lua started.
 function M.load(path)
+  if store.data then                              -- leaving the scene saves the store
+    assert(ssize(store.data) <= 1024, "store over 1024 bytes: " .. ssize(store.data))
+    M.saved = copy(store.data)
+  end
+  store.data = copy(M.saved or {})
   M.sent, M.rings, M.labels, M.page = {}, {}, {}, 1
   M.listening, M.hold, M.q = false, 0, {}
   if M.tp == 2 then M.tp = nil end

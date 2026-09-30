@@ -39,6 +39,8 @@ TEMPLATES = [
     ("m7b9", {0, 1, 3, 7, 10}), ("5", {0, 7}),
 ]
 SUF = [s for s, _ in TEMPLATES]
+# For the script: "intervals:suffix" per template, space separated; intervals as hex digits.
+TY = " ".join("".join("%X" % i for i in sorted(t)) + ":" + s for s, t in TEMPLATES)
 
 
 def name_chord(notes):
@@ -123,7 +125,8 @@ def main():
              f"-- pages: {','.join(pages + ['-'] * (11 - len(pages)) + ['Set'])}\n"
              f"local D = [=[{' '.join(tokens)}]=]\n"
              f"local T = [=[{'|'.join(titles)}]=]\n"
-             "local SUF = {" + ", ".join(f'"{s}"' for s in SUF) + "}\n"
+             f'local TY = "{TY}"\n'
+             f"local NTY = {len(TEMPLATES)}\n"
              "-- END CHORD DATA")
     src = open(target, encoding="utf-8").read()
     src, n = re.subn(r"-- BEGIN CHORD DATA.*?-- END CHORD DATA", lambda _: block, src, flags=re.S)

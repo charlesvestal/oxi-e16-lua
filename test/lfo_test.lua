@@ -93,7 +93,7 @@ press(1, 22)                                 -- LFO 2 sync (0.25 Hz -> 2 bars)
 for _ = 1, 6 do if E.labels[6] ~= "1/4" then turn(1, 6, 1) end end
 check(E.labels[6] == "1/4", "LFO 2 at 1/4 (" .. E.labels[6] .. ")")
 show(5)
-press(5, 49)                                 -- restart all: realign to the downbeat
+press(5, 52)                                 -- restart all: realign to the downbeat
 E.sent = {}
 E.run(4000)
 local a, b = ccs(3, 20), ccs(1, 71)

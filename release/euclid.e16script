@@ -5,9 +5,9 @@
 --   turn:  Len 1-32 | Puls 0-Len | Rot -(Len-1)..+(Len-1) | Note 0-127
 --   push:  Mute     | Invert     | Play/Stop             | Resync all tracks
 --
--- Page 2, settings (encoders 1-5; push encoder 1 = Play/Stop):
+-- Page 2, settings:
 --   BPM 20-300 | Step 1/4 1/8 8T 1/16 16T 1/32 | Gate 10-990 ms |
---   MIDI channel 1-16 | Output port (0 = all)
+--   MIDI channel 1-16 | Output port (0 = all) | push 6 = Play/Stop
 --
 -- Everything is stored in scene variables (Scene settings > Script Variables):
 --   bpm div gate ch out, and L/P/R/N/M/I 1-4 for the tracks.
@@ -54,11 +54,11 @@
 --@assign id=16 abbr="Not4" name="T4 Note"    l=0 h=127 manual=true g=16
 --@assign id=32 abbr="Not4" name="Resync"     p=true g=16
 --@assign id=33 abbr="BPM"  name="Tempo"      l=0 h=127 manual=true g=17
---@assign id=49 abbr="BPM"  name="Play/Stop (settings)" p=true g=17
 --@assign id=34 abbr="Step" name="Step size"  l=0 h=127 manual=true g=18
 --@assign id=35 abbr="Gate" name="Gate ms"    l=0 h=127 manual=true g=19
 --@assign id=36 abbr="Chan" name="MIDI channel" l=0 h=127 manual=true g=20
 --@assign id=37 abbr="Out"  name="Output port" l=0 h=127 manual=true g=21
+--@assign id=54 abbr="Play" name="Play/Stop (settings)" p=true g=22
 
 local DT = 10.1            -- real update period: firmware fires after > 10 ms
 local FULL = 16383         -- full LED ring
@@ -168,6 +168,8 @@ local function drawAll(pg)
       slots.update(i, k == 1 and "" .. v or k == 2 and DL[v] or k == 3 and "G" .. v
         or k == 4 and "Ch" .. v or (v == 0 and "All" or "O" .. v))
     end
+    leds.updateByIndex(6, run and FULL or 0, C_HIT)
+    slots.update(6, run and "Stop" or "Play")
   end
   -- Title freeze workaround: reset now, set the new text on the next update.
   local s = (run and "EUC > " or "EUC | ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or bpm)
@@ -233,7 +235,7 @@ function clock.onPulse(b, p)
 end
 
 -- Turn ids 1-16 edit V, 33-37 the settings; push ids 17-32 are mute, invert,
--- play/stop, resync, and 49 is play/stop on the settings page.
+-- play/stop, resync, and 54 is play/stop on the settings page.
 function controller.onEncoderTurn(e)
   local id, d = e.id, e.increment
   -- 0 = not a physical turn (recorder, random, group); 255 = non-script control
@@ -266,7 +268,7 @@ function controller.onEncoderTurn(e)
 end
 
 function controller.onEncoderPress(e)
-  local id = e.id == 49 and 3 or e.id - 16
+  local id = e.id == 54 and 3 or e.id - 16
   if id < 1 or id > 16 then return end
   if e.id < 33 then idx[id], spage = e.index, e.page end
   local t, k = (id + 3) // 4, (id - 1) % 4

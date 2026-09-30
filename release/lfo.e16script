@@ -17,8 +17,8 @@
 --   Rows are blue while playing, white when off, pink when frozen.
 --   The Center ring shows the live output. An LFO that is off sends its center
 --   value when it is switched off or its Center is turned (a plain CC knob).
--- Page 5, settings: 1 output port (0 = all), push = restart all (realigns synced
---   LFOs to the downbeat) | 2 BPM (the E16's internal tempo) | 3 push = all off.
+-- Page 5, settings: 1 output port (0 = all) | 2 BPM (the E16's internal tempo) |
+--   3 push = all off | 4 push = restart all (realigns synced LFOs to the downbeat).
 --
 -- Defaults: only LFO 1 runs; page p sends on channel p, rows on CC 74, 71, 1, 10.
 -- The header shows the page's LFOs and how many run in total ("LFO 1-4 3on").
@@ -59,9 +59,9 @@
 --@assign id=16 abbr="Ctr" name="Row 4 Center"     l=0 h=127 manual=true g=16
 --@assign id=32 abbr="Ctr" name="Row 4 Dest"       p=true g=16
 --@assign id=33 abbr="Out" name="Output port"     l=0 h=127 manual=true g=17
---@assign id=49 abbr="Out" name="Restart all"     p=true g=17
 --@assign id=34 abbr="BPM" name="Tempo"           l=0 h=127 manual=true g=18
 --@assign id=51 abbr="Stop" name="All off"        p=true g=19
+--@assign id=52 abbr="Rst"  name="Restart all"    p=true g=20
 -- pages: LFO1,LFO2,LFO3,LFO4,Set
 
 local N, PAGES, SETP = 16, 4, 5
@@ -289,10 +289,10 @@ local function toggleSync(t)
   end
 end
 
--- Pushes 17-32: on/off, Sync/Free, freeze, Dest per row; 49 restart all, 51 all off.
+-- Pushes 17-32: on/off, Sync/Free, freeze, Dest per row; 51 all off, 52 restart all.
 function controller.onEncoderPress(e)
   local id = e.id
-  if id == 49 then
+  if id == 52 then
     beat = 0
     for t = 1, N do PH[t] = 0 end
   elseif id == 51 then

@@ -22,7 +22,8 @@
 --   Encoders 9-16 show the 8 steps around the playhead: ring = pitch, colors
 --   for accent / slide / playhead; labels show the note.
 -- Page 2, settings: 1 step size | 2 gate % | 3 slide (Off, Leg = legato,
---   CC65 = legato + portamento CC 65) | 4 MIDI channel | 5 output port
+--   CC65 = legato + portamento CC 65) | 4 MIDI channel | 5 output port |
+--   push 6 = play/stop
 --
 -- Steps follow the E16's clock (24 ticks per quarter note). Play starts the
 -- internal clock at BPM; with external MIDI transport running, the sequence
@@ -72,6 +73,7 @@
 --@assign id=35 abbr="Slid" name="Slide mode"  l=0 h=127 manual=true g=19
 --@assign id=36 abbr="Chan" name="MIDI channel" l=0 h=127 manual=true g=20
 --@assign id=37 abbr="Out"  name="Output port" l=0 h=127 manual=true g=21
+--@assign id=54 abbr="Play" name="Play/Stop (settings)" p=true g=22
 -- pages: Acid,Set
 
 local FULL = 16383
@@ -325,7 +327,7 @@ function controller.onEncoderPress(e)
     for i = 1, 16 do P[i], U[i] = U[i], P[i] end
     save()
     setTitle("Undo")
-  elseif id == 24 or id == 49 then
+  elseif id == 24 or id == 54 then
     note(-1)
     if run then                       -- stop; external transport keeps running without us
       run = false

@@ -217,7 +217,7 @@ controller.onEncoderTurn{id = 255, index = 1, page = 1, increment = 1, value = 0
 local sm, sc, upd, su = midi.sendMidi, midi.sendCC, leds.updateByIndex, slots.update
 local nop = function() end
 midi.sendMidi, midi.sendCC, leds.updateByIndex, slots.update = nop, nop, nop, nop
-E.show(2); E.press(49); E.run(2000)
+E.show(2); E.press(54); E.run(2000)
 collectgarbage(); collectgarbage("stop")
 local c0 = collectgarbage("count")
 E.run(10000)

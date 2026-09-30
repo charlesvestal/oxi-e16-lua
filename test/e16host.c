@@ -7,7 +7,7 @@
  *    8-byte block header, sizes rounded up to 8 bytes
  *  - only base, math, string and table libraries (what the firmware opens)
  *  - generational GC (firmware calls lua_gc(L, LUA_GCGEN))
- *  - stub API tables: page, controller, midi, leds, slots, var, system, clock
+ *  - stub API tables: page, controller, midi, leds, slots, var, system, clock, store
  *
  * usage: e16host script.lua [seconds-of-playback] [heap-cap-bytes]
  */
@@ -127,6 +127,9 @@ int main(int argc, char **argv) {
   lib(L, "page", page); lib(L, "controller", ctl); lib(L, "midi", midi);
   lib(L, "leds", leds); lib(L, "slots", slots); lib(L, "var", var); lib(L, "system", sys);
   lib(L, "clock", clk);
+  const luaL_Reg sto[] = {{"use", noop}, {"size", noop}, {"capacity", noop}, {NULL, NULL}};
+  lib(L, "store", sto);
+  lua_getglobal(L, "store"); lua_newtable(L); lua_setfield(L, -2, "data"); lua_pop(L, 1);
   lua_gc(L, LUA_GCCOLLECT);
   size_t base = cur;
 

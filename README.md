@@ -76,11 +76,12 @@ the note name (`C2`). The header shows `EUC > 120` while playing and `EUC | 120`
 
 | enc | turn | label |
 |---|---|---|
-| 1 | tempo 20–300 (fast turns jump); **push = play/stop** | `120` |
+| 1 | tempo 20–300 (fast turns jump) | `120` |
 | 2 | step size: 1/4, 1/8, 8T, 1/16, 16T, 1/32 | `1/16` |
 | 3 | gate 10–990 ms | `G60` |
 | 4 | MIDI channel | `Ch10` |
 | 5 | output port (0 = all) | `All` / `O2` |
+| 6 | push = **play / stop** | `Play` / `Stop` |
 
 Defaults are a GM drum kit on channel 10: kick 36 E(4,16), snare 38 E(2,16) rotated by 4,
 closed hat 42 E(8,16), open hat 46 E(3,16) rotated by 2.
@@ -113,9 +114,10 @@ A modulation bank for several synths: 16 LFOs, each with its own MIDI channel an
   LFOs and how many are running in total (`LFO 1-4 3on`).
 
 **Page 5, settings:**
-1. output port. Push = restart all, which realigns synced LFOs to the downbeat.
+1. output port
 2. BPM: the E16's internal tempo, used for synced rates while transport is stopped
 3. push = all off
+4. push = restart all, which realigns synced LFOs to the downbeat
 
 By default only LFO 1 runs. Each page starts on its own MIDI channel (page 1 = channel 1 …), with
 the rows on CC 74, 71, 1 and 10, so a page is effectively one synth.
@@ -127,23 +129,26 @@ pad to play it. The header shows the set's name, and labels show chord names (mi
 use a lowercase root: `f#11` = F#m11; `s` = sus, `a9` = add9, `h7` = half-diminished,
 `?` = no simple name). The ring lights on the sounding pad.
 
-Turn any pad to set the **length**: Held (the chord sounds while you hold the pad; the default),
-Ltch (it drones until the next pad), or 0.1–4 s. It's the same setting as encoder 4 on the
-settings page, and the pad's label shows it for a second. A sounding chord follows the change,
-so turning down to Ltch keeps it going.
+**Make your own layout.** Turn a pad to change its chord type (34 types: triads, sus, 6ths, 7ths,
+9ths, 11ths, 13ths, altered). Hold the pad and turn to change its root; you hear the chord while
+you hold it, and it re-strikes once you pause. An edited chord is voiced on the device: the root
+in the bass near the original bass note, the rest around the original chord's register, so it
+sits with the rest of the set. Turn back to the original root and type and the hand voicing
+returns. Edits are saved in the scene (the store holds all 176 pads with room to spare), and
+**Reset** on the settings page clears them.
 
 **Page 12: settings.**
 1. transpose −12…+12 (the root key; labels follow)
 2. octave ±2
 3. velocity
-4. gate: Held, Ltch, or 0.1–4 s. Held plays from push to release. Ltch sustains a chord until the
-   next pad; push the same pad to stop it.
+4. length: Held, Ltch, or 0.1–4 s. Held (the default) plays from push to release. Ltch sustains
+   a chord until the next pad; push the same pad to stop it.
 5. strum 0–200 ms
 6. strum direction
 7. MIDI channel
 8. output port
-
-Push encoder 1 for all notes off.
+9. **Panic**: push for all notes off
+10. **Reset**: push and hold for 2 s, then let go, to clear your edits on every page
 
 The pages are Cinematic, Chill House, Gospel Soul, Neo Soul, Lofi R&B, Indie Jazz, Detroit,
 Lush Pads, Pop Piano, Impressionist and Sad Ballads. They are written for this project (see
@@ -180,12 +185,13 @@ lights up, glide steps have their own color, and steps past the length go dark. 
 values (`~64` = glide).
 
 **Page 2:**
-1. BPM (**push = play/stop**)
+1. BPM
 2. step size
 3. length 1–16
 4. CC number
 5. MIDI channel
 6. output port
+7. push = **play / stop**
 
 Steps follow the E16's clock, and a glide moves once per clock tick (24 per quarter note).
 
@@ -226,6 +232,7 @@ shows pitch, colors mark accent, slide and the playhead, and labels show the not
 3. slide: Off, Leg (legato), or CC65 (legato plus portamento CC 65)
 4. MIDI channel
 5. output port
+6. push = **play / stop** (the same as encoder 8's push on page 1)
 
 Steps follow the E16's clock. If anything goes wrong, TB-3PO keeps running: an error in its
 timer is caught, the header flashes `ERR`, and the message goes to the OXI App's console.

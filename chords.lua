@@ -2,39 +2,42 @@
 -- By Charles Vestal, https://github.com/charlesvestal/oxi-e16-lua (MIT license)
 --
 -- Pages 1-11: each page is one chord set (a mood), 16 hand-voiced chords.
---   Push a pad to play its chord. Turn any pad to set the length (Held, Ltch,
---   0.1-4 s; the same setting as encoder 4 on page 12); the pad's label shows
---   it for a second. Labels show chord names, minor chords with a
+--   Push a pad to play its chord. Labels show chord names, minor chords with a
 --   lowercase root (f#11 = F#m11, s = sus, a9 = add9, h7 = half-dim); the ring lights
 --   while the chord sounds (its fill follows the bass note). The header shows
 --   the set's name.
+-- Editing: turn a pad to change its chord type; hold it (you hear it) and turn
+--   to change its root. An edited chord is voiced around the original's register.
+--   Turning back to the original root and type restores the hand voicing. Edits
+--   are saved in the scene's store; Reset on page 12 clears them all.
 -- Page 12, settings: 1 transpose (root key, -12..+12) | 2 octave | 3 velocity |
 --   4 gate (Held = while the pad is pushed; Ltch = until the next pad, and
 --   pushing the same pad again stops; or 0.1-4 s) |
 --   5 strum (ms between notes) | 6 strum direction | 7 MIDI channel |
---   8 output port. Push encoder 1 = all notes off.
+--   8 output port | 9 Panic: push = all notes off | 10 Reset: push and hold
+--   for 2 s, then let go, to clear the edits on every page.
 --
 -- The sets are our own: specs in tools/chordgen/specs/, voiced by
 -- tools/chordgen/build.py; tools/make_chords.py --dir build/chordgen/sets
 -- writes the data block below. Settings persist in scene variables:
--- tr oct vel gate strum dir ch out.
+-- tr oct vel gate strum dir ch out; edits in store.data.e (pad -> root * 64 + type).
 
---@assign id=1  abbr="Pad1"  name="Pad 1 length" l=0 h=127 manual=true g=1
---@assign id=2  abbr="Pad2"  name="Pad 2 length" l=0 h=127 manual=true g=2
---@assign id=3  abbr="Pad3"  name="Pad 3 length" l=0 h=127 manual=true g=3
---@assign id=4  abbr="Pad4"  name="Pad 4 length" l=0 h=127 manual=true g=4
---@assign id=5  abbr="Pad5"  name="Pad 5 length" l=0 h=127 manual=true g=5
---@assign id=6  abbr="Pad6"  name="Pad 6 length" l=0 h=127 manual=true g=6
---@assign id=7  abbr="Pad7"  name="Pad 7 length" l=0 h=127 manual=true g=7
---@assign id=8  abbr="Pad8"  name="Pad 8 length" l=0 h=127 manual=true g=8
---@assign id=9  abbr="Pad9"  name="Pad 9 length" l=0 h=127 manual=true g=9
---@assign id=10 abbr="Pd10" name="Pad 10 length" l=0 h=127 manual=true g=10
---@assign id=11 abbr="Pd11" name="Pad 11 length" l=0 h=127 manual=true g=11
---@assign id=12 abbr="Pd12" name="Pad 12 length" l=0 h=127 manual=true g=12
---@assign id=13 abbr="Pd13" name="Pad 13 length" l=0 h=127 manual=true g=13
---@assign id=14 abbr="Pd14" name="Pad 14 length" l=0 h=127 manual=true g=14
---@assign id=15 abbr="Pd15" name="Pad 15 length" l=0 h=127 manual=true g=15
---@assign id=16 abbr="Pd16" name="Pad 16 length" l=0 h=127 manual=true g=16
+--@assign id=1  abbr="Pad1"  name="Pad 1 type (hold: root)" l=0 h=127 manual=true g=1
+--@assign id=2  abbr="Pad2"  name="Pad 2 type (hold: root)" l=0 h=127 manual=true g=2
+--@assign id=3  abbr="Pad3"  name="Pad 3 type (hold: root)" l=0 h=127 manual=true g=3
+--@assign id=4  abbr="Pad4"  name="Pad 4 type (hold: root)" l=0 h=127 manual=true g=4
+--@assign id=5  abbr="Pad5"  name="Pad 5 type (hold: root)" l=0 h=127 manual=true g=5
+--@assign id=6  abbr="Pad6"  name="Pad 6 type (hold: root)" l=0 h=127 manual=true g=6
+--@assign id=7  abbr="Pad7"  name="Pad 7 type (hold: root)" l=0 h=127 manual=true g=7
+--@assign id=8  abbr="Pad8"  name="Pad 8 type (hold: root)" l=0 h=127 manual=true g=8
+--@assign id=9  abbr="Pad9"  name="Pad 9 type (hold: root)" l=0 h=127 manual=true g=9
+--@assign id=10 abbr="Pd10" name="Pad 10 type (hold: root)" l=0 h=127 manual=true g=10
+--@assign id=11 abbr="Pd11" name="Pad 11 type (hold: root)" l=0 h=127 manual=true g=11
+--@assign id=12 abbr="Pd12" name="Pad 12 type (hold: root)" l=0 h=127 manual=true g=12
+--@assign id=13 abbr="Pd13" name="Pad 13 type (hold: root)" l=0 h=127 manual=true g=13
+--@assign id=14 abbr="Pd14" name="Pad 14 type (hold: root)" l=0 h=127 manual=true g=14
+--@assign id=15 abbr="Pd15" name="Pad 15 type (hold: root)" l=0 h=127 manual=true g=15
+--@assign id=16 abbr="Pd16" name="Pad 16 type (hold: root)" l=0 h=127 manual=true g=16
 --@assign id=17 abbr="Pad1"  name="Pad 1"  p=true g=1
 --@assign id=18 abbr="Pad2"  name="Pad 2"  p=true g=2
 --@assign id=19 abbr="Pad3"  name="Pad 3"  p=true g=3
@@ -52,7 +55,6 @@
 --@assign id=31 abbr="Pd15"  name="Pad 15" p=true g=15
 --@assign id=32 abbr="Pd16"  name="Pad 16" p=true g=16
 --@assign id=33 abbr="Trns" name="Transpose"    l=0 h=127 manual=true g=17
---@assign id=49 abbr="Trns" name="All notes off" p=true g=17
 --@assign id=34 abbr="Oct"  name="Octave"       l=0 h=127 manual=true g=18
 --@assign id=35 abbr="Vel"  name="Velocity"     l=0 h=127 manual=true g=19
 --@assign id=36 abbr="Gate" name="Gate"         l=0 h=127 manual=true g=20
@@ -60,15 +62,19 @@
 --@assign id=38 abbr="Dir"  name="Strum direction" l=0 h=127 manual=true g=22
 --@assign id=39 abbr="Chan" name="MIDI channel" l=0 h=127 manual=true g=23
 --@assign id=40 abbr="Out"  name="Output port"  l=0 h=127 manual=true g=24
+--@assign id=57 abbr="Pnic" name="All notes off" p=true g=25
+--@assign id=58 abbr="Rset" name="Clear all edits (hold 2 s)" p=true g=26
 
 -- D: one token per pad, space separated: root pitch class ("A" = C ... "L" = B,
--- "-" = unnamed), suffix index (SUF[byte - 47]), then notes as bytes (note + 11).
--- T: page titles separated by "|".
+-- "-" = unnamed), chord type (byte - 47: its place in TY), then notes as bytes (note + 11).
+-- T: page titles separated by "|". TY: the chord types, "intervals:suffix"
+-- (intervals above the root as hex digits); NTY: how many.
 -- BEGIN CHORD DATA (generated by tools/make_chords.py)
 -- pages: Cine,ChHo,GoSo,NeSo,LoR,InJa,Detr,LuPa,PoPi,Impr,SaBa,Set
 local D = [=[CE1?DILS KO9?DILQ FD4?DLNS A6/?DNS CH1?@INS H66?FNU KD9=DELS J58DKU KO9@EKPU HH6@ENPS J>8?DNU CB1:?DLU FO4:?DLS A?;?GNU KD9@EIPS JM8?DHNQ HE6ELP DD2ILN KD9GIP F64GIP AE;IJQ FF4EJN K99DIL DO2DIN HH6EGLP C:=GLP DD>ILN F?4GNP DO>INP CH=KLNS AE;JQU C>=NPS FD4DKN F84GJP KD9GIP K79HLN J:8GKN CM=GJM HE6ELP AJ;IKPQ K99ILP L=:ILO F0;GLP CN=GLM HH6EGLP AF;EIL FA4DIN AJ;EIKP DE2LMT IH7HMQR LD:HJQ KN9HIO GD5LOQ F<4JOR KM9IOR DH>LMOT LO:JLQ K:9HLO IE7FMQ BJ<JLQR G95HLQ F:4GJO DE>HLM BF<FJM G95HLQ F:4GJO DE2HLM IJ7EGLM BD<GJL KE9GHO DE>HLM I>7HJM KH9GHJO GD5LOQ F:4JOS KE9HOS G95HLQ G75HJP F:4GJO KM9FIO CD=HKM LH:HIKP EE3IMN JJ8FHMN G<5GKP LM:GJP EE3IMN JJ8HMNR HO6HMR G:5HKP LE:HIP EC?IMO EH?IMNP DC>HLN CD=HKM CA=FKM JE,?BFG AE/BEIJ DE2EHLM GE5HKOP FE4GJNO IE+>AEF LE.ADHI CE1DGKL ED3FJMO HD*=ADF KD-@DGI BD0CGJL CE1DGKL FD4GKNP JE,?BFG AD/BFIK I?7CGQV BO<CHNSX FH@CLQVZ D6>EJSZ A:;EJSZ BD<CHJSX KH9EHOSV DF>EJOTX F@@CLSZ BO<CHNSX ID;CGNQV D5>EOV GO5<AGQX I?7CGQV KE9CGLQT BD<CHLSV A0;GKN J18GKP F04GLP H06FIN J18GKP F04GLP H06FIN A0;GKN F04GLP A03GKN C:=GILP A0;GKN A0;GKN H0:FIN F08GLP H06FIN ED3?CJMR GH5?CFMP I:7>CMR JO8>CKPT AO/?BGMR CD1?DIMT ED3?CJMR GH5?CFMP BE<?FJOT L4:AHR JD8?DORT I:7>CMR HO6=BHMR FO4;@FKP ED3>AFKO E43?FM JE8GNR F9@GKP E8?IOR A66KPS FD4KNP H66IKR JE8GNR CE=KLS C:=LPS EM?LOU J:8KNS H06IR F9@KPS CE=KLS E>?IPR JH8INRS]=]
 local T = [=[Cinematic|Chill House|Gospel Soul|Neo Soul|Lofi R&B|Indie Jazz|Detroit|Lush Pads|Pop Piano|Impressionist|Sad Ballads]=]
-local SUF = {"", "m", "o", "+", "s2", "s4", "6", "m6", "7", "M7", "m7", "mM7", "h7", "o7", "7s", "a9", "ma9", "69", "m69", "9", "M9", "m9", "9s", "11", "m11", "M11", "13", "m13", "M13", "7b9", "7#9", "M7#11", "m7b9", "5"}
+local TY = "047: 037:m 036:o 048:+ 027:s2 057:s4 0479:6 0379:m6 047A:7 047B:M7 037A:m7 037B:mM7 036A:h7 0369:o7 057A:7s 0247:a9 0237:ma9 02479:69 02379:m69 0247A:9 0247B:M9 0237A:m9 0257A:9s 02457A:11 02357A:m11 02457B:M11 02479A:13 02379A:m13 02479B:M13 0147A:7b9 0347A:7#9 0467B:M7#11 0137A:m7b9 07:5"
+local NTY = 34
 -- END CHORD DATA
 
 local DT = 10.1            -- real update period: firmware fires after > 10 ms
@@ -87,7 +93,9 @@ local H, nh = {}, 0        -- notes sounding
 local Q, qi, qn, qt = {}, 1, 0, 0   -- strum queue: notes, next, count, ms to next
 local cur, left = 0, 0     -- sounding pad (1-176); ms until release (<= 0: none)
 local title, shown         -- pending / displayed header text
-local flash = 0            -- ms left showing the length on a pad label
+local N, nn = {}, 0        -- notes of a pad (untransposed), filled by notes()
+local ED = {}              -- edits: pad -> root * 64 + type (store.data.e)
+local down, again = 0, 0   -- pad held down; ms until an edited, sounding pad re-strikes
 
 local function clamp(v, lo, hi)
   return v < lo and lo or v > hi and hi or v
@@ -98,6 +106,13 @@ local function glab(v) return v < 0 and "Held" or v == 0 and "Ltch" or v // 10 .
 local function nname(n)
   local k = n % 12 * 2 + 1
   return (NN:sub(k, k + 1):gsub(" ", ""))
+end
+
+-- Start of chord type q in TY, and the position of its ":".
+local function ty(q)
+  local i = 1
+  for _ = 2, q do i = TY:find(" ", i, true) + 1 end
+  return i, TY:find(":", i, true)
 end
 
 -- Start and end of pad k's token in D (k = 1-176), or nil past the end.
@@ -111,13 +126,56 @@ local function tok(k)
   return s, (D:find(" ", s, true) or #D + 1) - 1
 end
 
-local function label(s, e)
+-- Pad k's original root and type as root * 64 + type (root = bass if unnamed).
+local function orig(k)
+  local s, e = tok(k)
+  if not s or s + 1 >= e then return 1 end
   local r = D:byte(s)
-  if s + 1 >= e then return "" end
-  if r == 45 then return nname(D:byte(s + 2) - 11 + SV[1]) .. "?" end
-  local n, x = nname(r - 65 + SV[1]), SUF[D:byte(s + 1) - 47]
-  if x:sub(1, 1) == "m" then n, x = n:lower(), x:sub(2) end   -- minor: "f#11"
-  return (n .. x):sub(1, 4)
+  return (r == 45 and (D:byte(s + 2) - 11) % 12 or r - 65) * 64 + D:byte(s + 1) - 47
+end
+
+-- Fill N with pad k's notes. An edited pad is voiced from its type's intervals:
+-- the root in the bass nearest the original bass, the rest around the center
+-- of the original upper voices (a triad also doubles its root up there).
+local function notes(k)
+  local s, e = tok(k)
+  nn = 0
+  if s and s + 1 < e then
+    for i = s + 2, e do nn = nn + 1; N[nn] = D:byte(i) - 11 end
+  end
+  local x = ED[k]
+  if not x then return end
+  local b, c = nn > 0 and N[1] or 48, 0
+  for i = 2, nn do c = c + N[i] end
+  c = nn > 1 and c / (nn - 1) or b + 16
+  b = b + ((x // 64 - b) % 12 + 6) % 12 - 6
+  local i, j = ty(x % 64)
+  j = j - 1
+  nn, N[1] = 1, b
+  for p = i, j do
+    local v = TY:byte(p)
+    v = v > 57 and v - 55 or v - 48
+    if v > 0 or j - i < 3 then
+      v = b + v
+      v = v + 12 * math.floor((c - v) / 12 + 0.5)   -- nearest the center
+      while v <= b do v = v + 12 end
+      local q = nn
+      while q > 1 and N[q] > v do N[q + 1] = N[q]; q = q - 1 end
+      if N[q] ~= v then N[q + 1] = v; nn = nn + 1 else for r = q + 1, nn do N[r] = N[r + 1] end end
+    end
+  end
+end
+
+local function label(k)
+  local s, e = tok(k)
+  local x = ED[k]
+  if not s or s + 1 >= e then return "" end
+  if not x and D:byte(s) == 45 then return nname(D:byte(s + 2) - 11 + SV[1]) .. "?" end
+  x = x or orig(k)
+  local _, c = ty(x % 64)
+  local n, u = nname(x // 64 + SV[1]), TY:sub(c + 1, (TY:find(" ", c, true) or #TY + 1) - 1)
+  if u:sub(1, 1) == "m" then n, u = n:lower(), u:sub(2) end   -- minor: "f#11"
+  return (n .. u):sub(1, 4)
 end
 
 local function send(n, v) midi.sendMidi(SV[8], 0, 0x8F + SV[7], n, v) end
@@ -137,8 +195,8 @@ end
 -- Ring of pad k, if its page is showing.
 local function drawPad(k)
   if k < 1 or (k - 1) // 16 + 1 ~= controller.getPage() then return end
-  local s, e = tok(k)
-  local v = s and s + 1 < e and (D:byte(s + 2) - 11 - 24) * FULL // 72 or 0
+  notes(k)
+  local v = nn > 0 and (N[1] - 24) * FULL // 72 or 0
   leds.updateByIndex((k - 1) % 16 + 1, clamp(v, 0, FULL), cur == k and C_HIT or C_ON)
 end
 
@@ -155,16 +213,13 @@ local function drawAll(pg)
     end
     for k = 9, 16 do
       leds.updateByIndex(k, 0, C_ON)
-      slots.update(k, "")
+      slots.update(k, k == 9 and "Pnic" or k == 10 and "Rset" or "")
     end
     setTitle("Chord settings")
   elseif pg < SETP then
-    local s = tok((pg - 1) * 16 + 1)
     for i = 1, 16 do
-      local e = s and (D:find(" ", s, true) or #D + 1) - 1
-      slots.update(i, s and label(s, e) or "")
+      slots.update(i, label((pg - 1) * 16 + i))
       drawPad((pg - 1) * 16 + i)
-      s = e and e + 2 <= #D and e + 2 or nil
     end
     local n = 1
     for t in T:gmatch("[^|]+") do
@@ -174,19 +229,17 @@ local function drawAll(pg)
   end
 end
 
--- Play pad k: queue its notes for the strum.
-local function play(k)
+-- Play pad k: queue its notes for the strum. re: re-strike an edited pad
+-- (never a Ltch stop).
+local function play(k, re)
   local was = cur
   offAll()
   drawPad(was)
-  if was == k and SV[4] == 0 then return end   -- Ltch: same pad again stops
-  local s, e = tok(k)
-  if not s or s + 1 >= e then return end
-  qn = 0
-  for i = s + 2, e do
-    qn = qn + 1
-    Q[qn] = clamp(D:byte(i) - 11 + SV[1] + SV[2] * 12, 0, 127)
-  end
+  if was == k and SV[4] == 0 and not re then return end   -- Ltch: same pad again stops
+  notes(k)
+  if nn == 0 then return end
+  qn = nn
+  for i = 1, nn do Q[i] = clamp(N[i] + SV[1] + SV[2] * 12, 0, 127) end
   if SV[6] == 1 then                   -- strum down: reverse the order
     for i = 1, qn // 2 do Q[i], Q[qn + 1 - i] = Q[qn + 1 - i], Q[i] end
   end
@@ -202,9 +255,9 @@ function system.update()
     H[nh], qi, qt = Q[qi], qi + 1, qt + SV[5] * 10
   end
   qt = qt - DT
-  if flash > 0 then
-    flash = flash - DT
-    if flash <= 0 then drawAll() end
+  if again > 0 then
+    again = again - DT
+    if again <= 0 and cur > 0 then play(cur, true) end
   end
   if left > 0 then
     left = left - DT
@@ -216,42 +269,56 @@ function system.update()
   end
 end
 
--- Turn ids 1-16 set the length on pages 1-11; 33-40 change the settings
--- (page 12). Push ids 17-32 play pads on pages 1-11; 49 is all notes off.
+-- Turn ids 1-16 edit pads on pages 1-11 (type; root while held); 33-40 change
+-- the settings (page 12). Push ids 17-32 play pads on pages 1-11; 57 is all
+-- notes off; 58 held for 2 s clears the edits.
 function controller.onEncoderTurn(e)
   local id, d = e.id, e.increment
   -- 0 = not a physical turn (recorder, random, group); 255 = non-script control
   if d == 0 or not (id >= 33 and id <= 40 or id <= 16 and e.page < SETP) then return end
   controller.set(id, "v", 8192)       -- keep manual encoders off their end stops
+  d = d > 0 and 1 or -1               -- one type or semitone per event
   if id <= 16 then
-    SV[4] = clamp(SV[4] + (d > 0 and 1 or -1), LO[4], HI[4])
-    var.set("gate", SV[4])
-    if cur > 0 then left = SV[4] * 100 end   -- the sounding chord follows: Held/Ltch keep it
-    slots.update(id, glab(SV[4]))
-    flash = 1000
+    local k = (e.page - 1) * 16 + id
+    local o = orig(k)
+    local x = ED[k] or o
+    if down == k then x = (x // 64 + d) % 12 * 64 + x % 64
+    else x = x // 64 * 64 + (x % 64 - 1 + d) % NTY + 1 end
+    ED[k] = x ~= o and x or nil       -- back at the original: the hand voicing returns
+    slots.update(id, label(k))
+    drawPad(k)
+    if cur == k then again = 150 end  -- re-strike once the turning pauses
     return
   end
   local k = id - 32
-  SV[k] = clamp(SV[k] + (k == 3 and d or d > 0 and 1 or -1), LO[k], HI[k])
+  SV[k] = clamp(SV[k] + (k == 3 and e.increment or d), LO[k], HI[k])
   var.set(SN[k], SV[k])
+  if k == 4 and cur > 0 then left = SV[4] * 100 end   -- the sounding chord follows: Held/Ltch keep it
   if k == 7 or k == 8 then offAll() end
   drawAll(e.page)
 end
 
 function controller.onEncoderPress(e)
-  if e.id == 49 then
+  if e.id == 57 then
     offAll()
     midi.sendCC(SV[8], SV[7] - 1, 123, 0)
     return
   end
   if e.id < 17 or e.id > 32 or e.page >= SETP then return end
-  play((e.page - 1) * 16 + e.id - 16)
+  down = (e.page - 1) * 16 + e.id - 16
+  play(down)
 end
 
+
 -- Held: letting go of the sounding pad releases its chord. (id and page are
--- the ones from the push.)
+-- the ones from the push.) Letting go of Reset after 2 s clears the edits.
 function controller.onEncoderRelease(e)
+  if e.id == 58 and e.held_ms >= 2000 then
+    for k in pairs(ED) do ED[k] = nil end
+    offAll()
+  end
   local k = (e.page - 1) * 16 + e.id - 16
+  if k == down then down = 0 end
   if SV[4] < 0 and e.id >= 17 and e.id <= 32 and k == cur then
     offAll()
     drawPad(k)
@@ -277,6 +344,8 @@ end
 
 function page.onInit()
   pull()
+  if type(store.data.e) ~= "table" then store.data.e = {} end
+  ED = store.data.e
   for id = 1, 40 do
     if id < 17 or id > 32 then controller.set(id, {manual = true, v = 8192}) end
   end
