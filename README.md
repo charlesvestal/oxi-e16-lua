@@ -263,36 +263,37 @@ note), so steps land on the clock exactly, and triplet step sizes are whole tick
 
 ## Memory
 
-Measured on firmware 1.2.0 with probe scenes (the tools are in `tools/`):
+On firmware 1.3.0 the limit that matters is **compiling**: when a script doesn't fit, the OXI
+App's console says `compile: not enough memory`, and the scene shows its default header and
+labels. `tools/measure.py` models it with a 32-bit build of `test/e16host.c`, run under Node's
+WASI (no Docker needed), so the numbers compare fairly with each other and with the device:
 
-- **Loading is the limit.** A script's *modeled load peak* (`test/e16host.c`: its "script peak
-  (load)" plus the 11.9 KB base) must stay **≤ 42.5 KB**. Load probes load at 42.6 KB and fail at 43.5 KB.
-- **While running,** the ceiling is higher: `probe.lua` runs out at a Lua count of 42.3 KB, which is
-  about **46.6 KB** modeled.
-- **Size** is not the constraint: 7,000-byte scripts load, and API 1.3.0 allows 8,192 bytes after
-  the app minifies them.
-
-| script | uploaded | load peak | margin |
+| script | uploaded | compile peak | status |
 |---|---|---|---|
-| modseq | 3.2 KB | ~30.0 KB | ~12.5 KB |
-| euclid | 4.5 KB | ~36.8 KB | ~5.7 KB |
-| chords | 5.3 KB | ~37.6 KB | ~4.9 KB |
-| lfo | 5.7 KB | ~41.8 KB | ~0.7 KB |
-| tb3po | 6.0 KB | 42.5 KB | 0.1 KB |
-| example step sequencer | 6.2 KB | 43.6 KB | −1.1 KB (fails to load) |
+| modseq | 3.4 KB | 18.9 KB | loads |
+| euclid | 4.5 KB | 23.8 KB | loads |
+| lfo | 5.9 KB | 27.0 KB | loads |
+| chords | 7.2 KB | 27.3 KB | loads |
+| tb3po | 6.3 KB | 28.5 KB | loads (the tightest) |
+| Chords earlier today | 7.0 KB | 29.2 KB | **fails** |
 
-On firmware 1.3.0 the limit measured a little lower (TB-3PO stopped loading about 0.1 KB
-above its old peak), so TB-3PO and LFO were trimmed by about 1 KB each; see the notes.
-The peaks marked ~ are for the clock versions. They're estimated from each script's growth in a
-64-bit build of `e16host`, because the 32-bit build needs Docker. TB-3PO was trimmed back to its
-old peak. Firmware 1.3 may also give Lua a different budget, so check the tight ones on hardware
-first. Scene variables are also limited: 32 per scene, and they outlive script changes, so
-`lfo.lua` and `tb3po.lua` stamp a layout version and clear old variables when it changes.
+So the line is between about 28.6 and 29.2 KB of compile peak, measured on hardware. A slot's
+saved variables and store seem to eat into it slightly (one Chords failed in its own slot but
+loaded in a fresh one), so keep a margin. What costs the most while compiling: table
+constructors with many constants (four small settings tables in Chords cost over 1 KB; parsing
+one string at startup is far cheaper), long chained `and`/`or` expressions, and large string
+literals (Chords' chord data is split into one literal per page). Script **size** is not the
+limit: 7,800-byte scripts load.
 
-If a scene shows its default title and labels and doesn't respond, the script didn't fit. With
-API 1.3.0, the OXI App's console (Scripts tab) shows load errors and `print` output.
-`tools/make_diag.py` is the firmware 1.2 alternative: a copy of a scene that prints any Lua error
-across the labels.
+The older 64-bit numbers (and the 1.2.0 load-probe figures in the notes) overstate code and
+understate data, so don't compare scripts with them.
+
+Scene variables are also limited: 32 per scene, and they outlive script changes, so every
+script stamps its own layout version and clears a slot's leftover variables when it doesn't
+match.
+
+To see why a script doesn't run, open the OXI App's console (Scripts tab) before opening the
+scene. `tools/make_diag.py` is the firmware 1.2 alternative.
 
 ## E16 Lua notes
 
@@ -328,7 +329,13 @@ and push release. The suites check the following:
 
 `test/e16host.c` models the device heap: a 32-bit build, the heap_4 overhead, the firmware's
 library set, and generational GC. While "playing" it calls `system.update` every 10 ms and
-`clock.onPulse` at 120 BPM. For example, with Docker:
+`clock.onPulse` at 120 BPM. It reports the compile, load and playing peaks.
+`tools/measure.py` builds it for wasm32 with a [wasi-sdk](https://github.com/WebAssembly/wasi-sdk/releases)
+release and runs it under Node:
+
+    python3 tools/measure.py path/to/wasi-sdk path/to/lua-5.4.7/src euclid.lua lfo.lua chords.lua modseq.lua tb3po.lua
+
+Or natively in 32-bit Linux, with Docker:
 
     docker run --rm --platform linux/386 -v "$PWD":/w -w /w i386/alpine:3.20 sh -c '
       apk add -q build-base && cd lua-5.4.7/src && make -s liblua.a &&

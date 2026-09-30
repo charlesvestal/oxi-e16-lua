@@ -86,12 +86,16 @@ local DIVS = {1, 2, 3, 4, 6, 8}
 local W = "Min Maj Dor Phr Mix HMinPMinPMaj1/4 1/8 8T  1/16D5  16T D7  1/32Off Leg CC65D   L           Oct T   M                   Ch  O   "
 local function word(i) return (W:sub(i * 4 - 3, i * 4):gsub(" ", "")) end
 
--- Settings: page 1 turns (1-8), page 2 turns (9-13), and the seed (14).
-local SN = {"dens", "len", "root", "scale", "oct", "tr", "mut", "bpm",
-  "div", "gate", "slide", "ch", "out", "seed"}
-local SV = {12, 16, 9, 1, 2, 0, 25, 120, 4, 50, 2, 1, 0, 0}
-local LO = {0, 1, 0, 1, 0, -12, 5, 20, 1, 10, 0, 1, 0, 0}
-local HI = {14, 32, 11, 8, 5, 12, 100, 300, 8, 100, 2, 16, 15, 65535}
+-- Settings: page 1 turns (1-8), page 2 turns (9-13), and the seed (14). Per
+-- setting: variable name, default, low, high, parsed from one string when the
+-- script starts (table constructors cost a lot of memory while compiling).
+local SN, SV, LO, HI, k = {}, {}, {}, {}, 0
+for n, d, lo, hi in ("dens 12 0 14 len 16 1 32 root 9 0 11 scale 1 1 8 oct 2 0 5 tr 0 -12 12 mut 25 5 100 "
+    .. "bpm 120 20 300 div 4 1 8 gate 50 10 100 slide 2 0 2 ch 1 1 16 out 0 0 15 seed 0 0 65535")
+    :gmatch("(%a+) (%S+) (%S+) (%S+)") do
+  k = k + 1
+  SN[k], SV[k], LO[k], HI[k] = n, tonumber(d), tonumber(lo), tonumber(hi)
+end
 
 -- Pattern: 9 bits per step, two steps per number (P[1] = steps 1-2 ...):
 -- bits 0-3 scale degree, 4-5 octave (0 down, 1 none, 2 up), 6 gate, 7 accent, 8 slide.

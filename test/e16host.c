@@ -10,6 +10,10 @@
  *  - stub API tables: page, controller, midi, leds, slots, var, system, clock, store
  *
  * usage: e16host script.lua [seconds-of-playback] [heap-cap-bytes]
+ *
+ * The device's pointers are 32-bit: build for wasm32 and run it with node
+ * (test/run32.mjs); see tools/measure.py. A 64-bit build overstates code and
+ * understates data, so it misjudges scripts against each other.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,6 +139,7 @@ int main(int argc, char **argv) {
 
   peak = cur;
   if (luaL_loadfile(L, argv[1]) != LUA_OK) { fprintf(stderr, "%s\n", lua_tostring(L, -1)); return 1; }
+  size_t compilepeak = peak;
   if (lua_pcall(L, 0, 0, 0) != LUA_OK) { fprintf(stderr, "%s\n", lua_tostring(L, -1)); return 1; }
   size_t loadpeak = peak;
   call(L, "page", "onInit", 0);
@@ -177,6 +182,7 @@ int main(int argc, char **argv) {
 
   printf("VM + std libs         %6zu B\n", vm);
   printf("E16 API tables        %6zu B\n", base - vm);
+  printf("script compile peak   %6zu B\n", compilepeak - base);
   printf("script peak (load)    %6zu B\n", loadpeak - base);
   printf("script live (init)    %6zu B\n", live - base);
   printf("script peak (playing) %6zu B\n", runpeak - base);

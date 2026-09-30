@@ -51,7 +51,14 @@ Source tags:
 - Manual controls get every turn, even at the ends of the range, with `increment` still showing
   the direction **[1.3]**. That may make the end-stop write-back below unnecessary.
 - `controller.get(id, key)` reads a destination's properties **[1.3]**.
-- **The load limit on 1.3.0 is a little lower than on 1.2.0.** TB-3PO failed to load at a 64-bit
+- **On 1.3.0 the limit is compiling (hardware-measured with a 32-bit model):** a script fails
+  with `compile: not enough memory` (console) when `tools/measure.py`'s compile peak is above
+  roughly 28.6-29.2 KB; 28.7 KB loads, 29.2 KB fails. A slot's saved variables and store seem to
+  take a little of that (the same Chords failed in its slot and loaded in a fresh one). A heap
+  probe compiling test chunks at runtime (`load`) matches the model at a total heap cap of about
+  44-47 KB. Table constructors with many constants and long `and`/`or` chains are expensive;
+  scripts of 7,100 and 7,800 bytes load, so size isn't the limit. **[HW] [MODEL]**
+- (Earlier, with a 64-bit model:) **The load limit on 1.3.0 is a little lower than on 1.2.0.** TB-3PO failed to load at a 64-bit
   `e16host` load peak of 43,968 B, while LFO loads at 43,840 B. **[HW]** (The same TB-3PO had loaded
   at 43,920 B earlier.) A failed load looks like the scene's default header ("TB-3PO-Acid") and
   plain labels, and `onInit` never runs. Constant tables of strings are the cheapest thing to cut:
