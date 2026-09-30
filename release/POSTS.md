@@ -1,104 +1,126 @@
 # Community posts
 
-One post per scene. Post the `.oxie16` scene: it carries the wiring and the script.
-All five need E16 firmware 1.3 (Lua API 1.3.0) or later.
-
----
-
-## Euclid
-
-**Title:** Euclid – 4-track Euclidean drum sequencer
-
-**Description:**
-
-Four Euclidean rhythm tracks, one per row: turn to set Length (1–32), Pulses, Rotation and Note;
-push for Mute, Invert, Play/Stop and Resync.
-
-- Follows external MIDI clock and transport (Start, Continue, Stop). With no clock running,
-  Play starts the E16's internal clock at the scene's BPM.
-- Page 2: BPM, step size (1/4 to 1/32, with triplets), gate, MIDI channel, output port, Play/Stop.
-- Defaults to a GM drum kit on channel 10. Settings are saved in the scene.
-
-To send clock to other gear, choose an output on the Internal Clock alt action first.
-
-Source and docs: https://github.com/charlesvestal/oxi-e16-lua (MIT)
+One post per scene: post the `.oxie16` scene, which carries the wiring and the script.
+All five need E16 firmware 1.3 or later.
 
 ---
 
 ## LFOx16
 
-**Title:** LFOx16 – 16 LFOs, each on its own channel and CC
+A bank of 16 assignable LFOs.
 
-**Description:**
+Each row is an LFO with four knobs. Controls:
 
-A modulation bank for several synths. Four LFOs per page on pages 1–4, one per row: Shape (sine,
-triangle, saws, square, S&H), Rate, Depth ±100 % and Center.
+Turns:
+Knob 1: Shape (Sine, Triangle, Saw Up, Saw Down, Square, S&H)
+Knob 2: Rate (20s to 6.4Hz; synced 8 bars to 1/32)
+Knob 3: Depth (-100% to +100%)
+Knob 4: Center
 
-- Push Rate to switch between a free rate (20 s to 6.4 Hz) and a tempo-synced one (8 bars to
-  1/32, with triplets).
-- Synced LFOs lock to the running clock, internal or external, and restart on Start. When the
-  transport is stopped, they run at the scene's BPM.
-- Push Dest to set each LFO's MIDI channel and CC. Other pushes: on/off, freeze.
-- Page 5: output port, BPM, all off, restart all.
+Pushes:
+Knob 1: LFO on/off
+Knob 2: Sync/Free
+Knob 3: Freeze LFO
+Knob 4: Destination (use knobs 1-2 to set this LFO's channel and CC)
 
-Source and docs: https://github.com/charlesvestal/oxi-e16-lua (MIT)
+Press shift to change pages:
+1-4: 4 LFOs each
+5: Settings: Output port, BPM, All off, Restart all
+
+---
+
+## Euclid
+
+Four Euclidean rhythm tracks that follow MIDI clock.
+
+Each row is a track with four knobs. Controls:
+
+Turns:
+Knob 1: Length (1-32 steps)
+Knob 2: Pulses (hits spread evenly across the length)
+Knob 3: Rotation
+Knob 4: Note
+
+Pushes:
+Knob 1: Mute
+Knob 2: Invert
+Knob 3: Play/Stop
+Knob 4: Resync all tracks
+
+Press shift to change pages:
+1: Tracks
+2: Settings: BPM, Step size (1/4 to 1/32, with triplets), Gate, MIDI channel, Output port, Play/Stop
+
+Follows external clock and transport. With no clock, Play starts the E16's internal clock.
 
 ---
 
 ## Chords
 
-**Title:** Chords – 176 hand-voiced chord pads in 11 moods
+176 chord pads in 11 moods: Cinematic, Chill House, Gospel Soul, Neo Soul, Lofi R&B,
+Indie Jazz, Detroit, Lush Pads, Pop Piano, Impressionist and Sad Ballads.
 
-**Description:**
+Each knob is a chord pad. Controls:
 
-Eleven pages of 16 chord pads each, one mood per page: Cinematic, Chill House, Gospel Soul,
-Neo Soul, Lofi R&B, Indie Jazz, Detroit, Lush Pads, Pop Piano, Impressionist and Sad Ballads.
-The labels show the chord names.
+Push: play the chord (it sounds while held)
+Turn: change the root
+Push + turn: change the chord type (34 types)
 
-- Push a pad to play its chord. By default it sounds while you hold the pad.
-- Make your own layout: turn a pad to change its root, or hold it and turn to change its chord
-  type (34 types). Edited chords are voiced to fit the set, and edits are saved in the scene.
-- Page 12: transpose, octave, velocity, length (Held, Latch or 0.1–4 s), strum time and
-  direction, MIDI channel, output port, Panic, and Reset (clears your edits).
+Edited chords are voiced to fit the set and saved with the scene.
 
-The chord sets are original, voiced to stay in one register and move smoothly from pad to pad.
-
-Source and docs: https://github.com/charlesvestal/oxi-e16-lua (MIT)
+Press shift to change pages:
+1-11: one chord set each
+12: Settings: Transpose, Octave, Velocity, Length (Held, Latch, 0.1-4s), Strum, Strum direction,
+MIDI channel, Output port, Panic, Reset edits (hold 2s)
 
 ---
 
 ## Mod Seq
 
-**Title:** Mod Seq – 16-step CC modulation sequencer
+A 16-step CC modulation sequencer that follows MIDI clock.
 
-**Description:**
+Each knob is a step. Controls:
 
-One step per encoder. Turn to set the step's CC value; push to glide to the next step.
+Turn: step value (0-127)
+Push: glide to the next step
 
-- Follows external MIDI clock and transport; otherwise Play starts the internal clock.
-- Glides move every clock tick (24 per quarter note).
-- Page 2: BPM, step size, length 1–16, CC number, MIDI channel, output port, Play/Stop.
+Press shift to change pages:
+1: Steps
+2: Settings: BPM, Step size, Length (1-16), CC number, MIDI channel, Output port, Play/Stop
 
-Source and docs: https://github.com/charlesvestal/oxi-e16-lua (MIT)
+Follows external clock and transport. With no clock, Play starts the E16's internal clock.
 
 ---
 
 ## TB-3PO
 
-**Title:** TB-3PO – generative 303-style acid sequencer
+A generative 303-style acid sequencer that follows MIDI clock, ported from the Ornament & Crime
+/ Phazerville applet.
 
-**Description:**
+Knobs 1-8 set the generator. Controls:
 
-A port of the TB-3PO applet from Ornament & Crime / Phazerville to the E16.
+Turns:
+Knob 1: Density (-7 to +7)
+Knob 2: Length (1-32)
+Knob 3: Root
+Knob 4: Scale
+Knob 5: Octave
+Knob 6: Transpose
+Knob 7: Mutate amount
+Knob 8: BPM
 
-- The knobs set up the generator, and the pattern only changes when you ask. Generate draws a
-  new seed. Regen redraws the same seed at the current density. Mutate re-rolls some steps.
-  Undo swaps back.
-- Density goes from −7 to +7. Negative values narrow the pitch range, for classic 303 lines.
-- Root, scale (8 scales), octave and transpose apply live. Encoders 9–16 show the steps around
-  the playhead.
-- Slides play legato, optionally with portamento (CC 65).
-- Follows external MIDI clock and transport; otherwise Play starts the internal clock.
+Pushes:
+Knob 1: Generate (new pattern)
+Knob 2: Undo
+Knob 4: Restart
+Knob 5: Regen (same pattern, current density)
+Knob 7: Mutate
+Knob 8: Play/Stop
 
-Original TB3PO © 2020 Logarhythm (MIT), modified by djphazer in Phazerville. This port is
-GPL-3.0: https://github.com/charlesvestal/oxi-e16-lua
+Knobs 9-16 show the steps around the playhead.
+
+Press shift to change pages:
+1: Pattern
+2: Settings: Step size, Gate, Slide mode, MIDI channel, Output port, Play/Stop
+
+Original TB3PO © 2020 Logarhythm (MIT), modified by djphazer. This port is GPL-3.0.
