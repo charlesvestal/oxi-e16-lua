@@ -15,8 +15,8 @@
 --   4 gate (Held = while the pad is pushed; Ltch = until the next pad, and
 --   pushing the same pad again stops; or 0.1-4 s) |
 --   5 strum (ms between notes) | 6 strum direction | 7 MIDI channel |
---   8 output port | 9 Panic: push = all notes off | 10 Reset: push and hold
---   for 2 s, then let go, to clear the edits on every page.
+--   8 output port | 9 Panic: push = all notes off | 10 Reset: push and hold;
+--   the ring fills over 2 s, then the edits on every page are cleared ("Done").
 --
 -- The sets are our own: specs in tools/chordgen/specs/, voiced by
 -- tools/chordgen/build.py; tools/make_chords.py --dir build/chordgen/sets
@@ -96,7 +96,7 @@ local cur, left = 0, 0     -- sounding pad (1-176); ms until release (<= 0: none
 local title, shown         -- pending / displayed header text
 local N, nn = {}, 0        -- notes of a pad (untransposed), filled by notes()
 local ED = {}              -- edits: pad -> root * 64 + type (store.data.e)
-local down = 0             -- pad held down
+local down, rz = 0, -1     -- pad held down; ms Reset has been held (-1 = not held)
 
 local function clamp(v, lo, hi)
   return v < lo and lo or v > hi and hi or v
@@ -255,6 +255,16 @@ function system.update()
     H[nh], qi, qt = Q[qi], qi + 1, qt + SV[5] * 10
   end
   qt = qt - DT
+  if rz >= 0 then                     -- Reset held: fill its ring, clear at 2 s
+    rz = rz + DT
+    leds.updateByIndex(10, math.min(rz, 2000) * FULL // 2000, C_HIT)
+    if rz >= 2000 then
+      for k in pairs(ED) do ED[k] = nil end
+      offAll()
+      rz = -1
+      slots.update(10, "Done")
+    end
+  end
   if left > 0 then
     left = left - DT
     if left <= 0 then
@@ -294,6 +304,11 @@ function controller.onEncoderTurn(e)
 end
 
 function controller.onEncoderPress(e)
+  if e.id == 58 then
+    rz = 0
+    slots.update(10, "Hold")
+    return
+  end
   if e.id == 57 then
     offAll()
     midi.sendCC(SV[8], SV[7] - 1, 123, 0)
@@ -306,11 +321,12 @@ end
 
 
 -- Held: letting go of the sounding pad releases its chord. (id and page are
--- the ones from the push.) Letting go of Reset after 2 s clears the edits.
+-- the ones from the push.) Letting go of Reset early cancels it.
 function controller.onEncoderRelease(e)
-  if e.id == 58 and e.held_ms >= 2000 then
-    for k in pairs(ED) do ED[k] = nil end
-    offAll()
+  if e.id == 58 and rz >= 0 then
+    rz = -1
+    leds.updateByIndex(10, 0, C_ON)
+    slots.update(10, "Rset")
   end
   local k = (e.page - 1) * 16 + e.id - 16
   if k == down then down = 0 end

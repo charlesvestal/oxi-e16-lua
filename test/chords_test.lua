@@ -321,10 +321,16 @@ check(E.labels[2] == l2 and store.data.e[2] ~= nil, "edits persist across reload
 -- the settings Reset ring shows how much is edited; holding Reset clears everything
 E.show(12)
 check(E.labels[9] == "Pnic" and E.labels[10] == "Rset", "Panic and Reset knobs")
-E.press(58); E.release(58, 500)
-check(next(store.data.e) ~= nil, "a short push on Reset does nothing")
-E.press(58); E.release(58, 2100)
-check(next(store.data.e) == nil, "holding Reset for 2 s clears all edits")
+E.press(58)
+check(E.labels[10] == "Hold", "pushing Reset says Hold")
+E.run(1000)
+check(E.rings[10].v > 6000 and E.rings[10].v < 10000 and next(store.data.e) ~= nil, "its ring fills while held (" .. E.rings[10].v .. ")")
+E.release(58, 1000)
+check(next(store.data.e) ~= nil and E.labels[10] == "Rset" and E.rings[10].v == 0, "letting go early cancels")
+E.press(58); E.run(2100)
+check(next(store.data.e) == nil and E.labels[10] == "Done", "held 2 s: all edits cleared, label says Done")
+E.release(58, 2100)
+check(E.labels[10] == "Done", "Done stays after letting go")
 E.show(1)
 check(E.labels[1] == origLabel, "labels back to the originals")
 -- every pad edited still fits the 1 KiB store
@@ -339,7 +345,7 @@ local nE = 0
 for _ in pairs(store.data.e) do nE = nE + 1 end
 check(nE >= 170 and store.size() <= 1024, ("all pads edited: %d edits, store %d of 1024 bytes"):format(nE, store.size()))
 E.load(SCRIPT)
-E.show(12); E.press(58); E.release(58, 2100)
+E.show(12); E.press(58); E.run(2100); E.release(58, 2100)
 
 -- ignores foreign events
 controller.onEncoderTurn{id = 255, index = 1, page = 3, increment = 1, value = 0, scaled = 0, is_held = false}

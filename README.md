@@ -148,7 +148,8 @@ returns. Edits are saved in the scene (the store holds all 176 pads with room to
 7. MIDI channel
 8. output port
 9. **Panic**: push for all notes off
-10. **Reset**: push and hold for 2 s, then let go, to clear your edits on every page
+10. **Reset**: push and hold. The label says `Hold` and the ring fills; after 2 s your edits on
+    every page are cleared and it says `Done`. Letting go early cancels.
 
 The pages are Cinematic, Chill House, Gospel Soul, Neo Soul, Lofi R&B, Indie Jazz, Detroit,
 Lush Pads, Pop Piano, Impressionist and Sad Ballads. They are written for this project (see
