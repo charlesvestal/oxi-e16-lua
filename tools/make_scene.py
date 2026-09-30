@@ -210,6 +210,8 @@ def main():
                 enc["name"] = enc["abbr"] = turn["abbr"]
                 t["type"], t["scriptId"] = 11, tid          # 11 = Script turn
                 t["lower"], t["upper"] = int(turn.get("l", 0)), int(turn.get("h", 127))
+                if "dis" in turn:
+                    t["display"] = int(turn["dis"])         # value format (template default 10)
             else:
                 enc["name"] = enc["abbr"] = push["abbr"] if push else ""
                 t["type"], t["scriptId"] = 0, 0             # 0 = off

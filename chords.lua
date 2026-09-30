@@ -6,8 +6,9 @@
 --   lowercase root (f#11 = F#m11, s = sus, a9 = add9, h7 = half-dim); the ring lights
 --   while the chord sounds (its fill follows the bass note). The header shows
 --   the set's name.
--- Editing: turn a pad to change its chord type; hold it (you hear it) and turn
---   to change its root. An edited chord is voiced around the original's register.
+-- Editing: turn a pad to change its chord type; hold it and turn to change its
+--   root. Turning doesn't play anything (a sounding chord keeps ringing); the
+--   next push plays the new chord. An edited chord is voiced around the original's register.
 --   Turning back to the original root and type restores the hand voicing. Edits
 --   are saved in the scene's store; Reset on page 12 clears them all.
 -- Page 12, settings: 1 transpose (root key, -12..+12) | 2 octave | 3 velocity |
@@ -95,7 +96,7 @@ local cur, left = 0, 0     -- sounding pad (1-176); ms until release (<= 0: none
 local title, shown         -- pending / displayed header text
 local N, nn = {}, 0        -- notes of a pad (untransposed), filled by notes()
 local ED = {}              -- edits: pad -> root * 64 + type (store.data.e)
-local down, again = 0, 0   -- pad held down; ms until an edited, sounding pad re-strikes
+local down = 0             -- pad held down
 
 local function clamp(v, lo, hi)
   return v < lo and lo or v > hi and hi or v
@@ -229,13 +230,12 @@ local function drawAll(pg)
   end
 end
 
--- Play pad k: queue its notes for the strum. re: re-strike an edited pad
--- (never a Ltch stop).
-local function play(k, re)
+-- Play pad k: queue its notes for the strum.
+local function play(k)
   local was = cur
   offAll()
   drawPad(was)
-  if was == k and SV[4] == 0 and not re then return end   -- Ltch: same pad again stops
+  if was == k and SV[4] == 0 then return end   -- Ltch: same pad again stops
   notes(k)
   if nn == 0 then return end
   qn = nn
@@ -255,10 +255,6 @@ function system.update()
     H[nh], qi, qt = Q[qi], qi + 1, qt + SV[5] * 10
   end
   qt = qt - DT
-  if again > 0 then
-    again = again - DT
-    if again <= 0 and cur > 0 then play(cur, true) end
-  end
   if left > 0 then
     left = left - DT
     if left <= 0 then
@@ -287,7 +283,6 @@ function controller.onEncoderTurn(e)
     ED[k] = x ~= o and x or nil       -- back at the original: the hand voicing returns
     slots.update(id, label(k))
     drawPad(k)
-    if cur == k then again = 150 end  -- re-strike once the turning pauses
     return
   end
   local k = id - 32

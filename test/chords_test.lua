@@ -287,16 +287,29 @@ local r0 = playNotes(2)[1]
 eturn(2, 2, true)
 local r2 = playNotes(2)
 check((r2[1] - r0) % 12 == 2 and math.abs(r2[1] - r0) <= 6, "hold + turn: root up 2 semitones (" .. r0 .. " -> " .. r2[1] .. ")")
--- editing a sounding chord re-strikes it once the turning pauses (Ltch)
+-- turning plays nothing: a sounding chord keeps ringing, the next push plays the edit
 set(4, 1); E.show(1)
 E.sent = {}; pad(1, 3); E.run(50)
 local n1 = #ons()
-eturn(3, 1); E.run(80)
-check(#ons() == n1, "no re-strike while still turning")
-E.run(150)
-check(#ons() > n1, "re-strikes with the new chord after a pause")
-pad(1, 3); E.run(20)                          -- Ltch: stop it
+local before3 = {}
+for _, m in ipairs(ons()) do before3[#before3 + 1] = m.d1 end
+eturn(3, 1); E.run(500)
+check(n1 > 0 and #ons() == n1 and offs() == 0 and E.rings[3].c ~= 0, "turning a sounding pad: no new notes, the chord keeps ringing")
+pad(1, 3); E.run(20)                          -- Ltch: this push stops it
+check(offs() == n1, "... and it's released normally")
+E.sent = {}; pad(1, 3); E.run(50)
+local after3 = {}
+for _, m in ipairs(ons()) do after3[#after3 + 1] = m.d1 end
+check(table.concat(after3, ",") ~= table.concat(before3, ","), "the next push plays the edited chord")
+pad(1, 3); E.run(20)
 set(4, -1); E.show(1)
+E.sent = {}; pad(1, 4); E.run(30)
+local n4 = #ons()
+eturn(4, 3)                                   -- turning while held (pad 4 is down): root
+E.run(300)
+check(#ons() == n4 and offs() == 0, "hold + turn: the held chord keeps ringing, nothing new plays")
+lift(1, 4)
+check(offs() == n4, "letting go releases it")
 -- edits persist across reload, labels included
 local l2 = E.labels[2]
 E.load(SCRIPT); E.run(30)
