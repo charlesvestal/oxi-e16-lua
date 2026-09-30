@@ -102,7 +102,8 @@ local function clamp(v, lo, hi)
   return v < lo and lo or v > hi and hi or v
 end
 
-local function glab(v) return v < 0 and "Held" or v == 0 and "Ltch" or v // 10 .. "." .. v % 10 .. "s" end
+-- Length label; \142 is the E16 font's lock glyph (latch).
+local function glab(v) return v < 0 and "Held" or v == 0 and "\142Lch" or v // 10 .. "." .. v % 10 .. "s" end
 
 local function nname(n)
   local k = n % 12 * 2 + 1
@@ -209,7 +210,7 @@ local function drawAll(pg)
       leds.updateByIndex(k, (v - LO[k]) * FULL // (HI[k] - LO[k]), C_ON)
       slots.update(k, k == 1 and (v > 0 and "T+" or "T") .. v or k == 2 and (v > 0 and "Oc+" or "Oc") .. v
         or k == 3 and "V" .. v or k == 4 and glab(v)
-        or k == 5 and "S" .. v * 10 or k == 6 and (v == 1 and "Down" or "Up")
+        or k == 5 and "S" .. v * 10 or k == 6 and (v == 1 and "\131Dn" or "\130Up")   -- arrow glyphs
         or k == 7 and "Ch" .. v or v == 0 and "All" or "O" .. v)
     end
     for k = 9, 16 do

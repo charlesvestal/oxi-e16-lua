@@ -12,7 +12,7 @@ end
 E.load("modseq.lua")
 check(E.listening and E.res == 96 and E.bpm == 120, "listens to the clock (24 ticks per quarter), tempo 120")
 E.run(60)
-check(E.title == "MOD | 120", "title stopped (" .. E.title .. ")")
+check(E.title == "MOD \135 120", "title stopped (" .. E.title .. ")")
 check(E.labels[1] == "0" and E.labels[9] == "127" and E.labels[16] == "16", "default ramp labels")
 E.run(1000)
 check(#E.sent == 0, "silent while stopped")
@@ -22,7 +22,7 @@ E.show(2)
 E.sent = {}
 E.press(55)
 E.run(125 * 16 - 1)
-check(E.title == "MOD > 120", "title playing")
+check(E.title == "MOD \133 120", "title playing")
 local v = vals(E.msgs(0xB0, 74))
 check(#v == 16, "16 steps in one bar, one CC each (" .. #v .. ")")
 check(v[1] == 0 and v[9] == 127 and v[16] == 16, "values follow the steps (" .. table.concat(v, ",") .. ")")
@@ -102,7 +102,7 @@ E.press(55)
 E.run(60)
 E.sent = {}
 E.run(1000)
-check(#E.sent == 0 and E.title == "MOD | 130" and E.tp == nil, "stop: silent, clock stopped, title updated")
+check(#E.sent == 0 and E.title == "MOD \135 130" and E.tp == nil, "stop: silent, clock stopped, title updated")
 
 -- external transport: follows its tempo; Continue resumes where it stopped
 E.show(1)
@@ -111,11 +111,11 @@ E.extStart(90)
 E.run(60000 / 90 * 4 - 1)                -- one bar of 16ths at 90
 check(#E.msgs(0xB0, 64) == 16, "follows external clock: 16 steps per bar at 90 (" .. #E.msgs(0xB0, 64) .. ")")
 E.run(60)
-check(E.title == "MOD > 90", "header shows the external tempo (" .. E.title .. ")")
+check(E.title == "MOD \133 90", "header shows the external tempo (" .. E.title .. ")")
 local at
 for i = 1, 16 do if E.rings[i].c == 50 then at = i end end
 E.extStop(); E.run(30)
-check(at ~= nil and E.title == "MOD | 130", "external Stop stops")
+check(at ~= nil and E.title == "MOD \135 130", "external Stop stops")
 E.extContinue(); E.run(170)
 local now
 for i = 1, 16 do if E.rings[i].c == 50 then now = i end end

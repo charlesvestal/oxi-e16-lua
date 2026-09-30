@@ -112,7 +112,7 @@ for i = 1, math.min(#a, #b) do if a[i] ~= b[i] then same = false end end
 check(same, "two synced LFOs stay locked together")
 
 -- BPM on the settings page drives synced rates
-check(E.labels[1] == "All" and E.labels[2] == "120" and E.labels[3] == "Stop", "settings labels: " .. table.concat(E.labels, " ", 1, 3))
+check(E.labels[1] == "All" and E.labels[2] == "120" and E.labels[3] == "\135Off", "settings labels: " .. table.concat(E.labels, " ", 1, 3))
 
 -- changing the port leaves the old one at the centers, then continues on the new one
 E.sent = {}

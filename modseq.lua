@@ -84,7 +84,8 @@ end
 local function glide(i) return GL >> (i - 1) & 1 == 1 end
 
 local function setTitle()
-  local s = (run and "MOD > " or "MOD | ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or SV[1])
+  -- \133 / \135: the E16 font's play / stop glyphs
+  local s = (run and "MOD \133 " or "MOD \135 ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or SV[1])
   if s ~= shown then
     page.resetTitle()                 -- title freeze workaround: set on next tick
     title, shown = s, s
@@ -113,7 +114,7 @@ local function drawAll(pg)
         or (v == 0 and "All" or "O" .. v))
     end
     leds.updateByIndex(7, FULL, run and C_PLAY or C_ON)  -- always lit: it's a button
-    slots.update(7, run and "Stop" or "Play")
+    slots.update(7, run and "\135" or "\133")   -- the E16 font's stop / play glyphs
   end
   setTitle()
 end

@@ -69,7 +69,7 @@ follow the OXI ONE's Euclidean generator.
 
 Rings: col 1 shows the playhead, col 2 pulse density, col 3 rotation, and col 4 the
 note (it flashes while a note sounds). Labels show `L16`, `P4` (`i4` when inverted), `R+2`, and
-the note name (`C2`). The header shows `EUC > 120` while playing and `EUC | 120` while stopped
+the note name (`C2`). The header shows `EUC ▶ 120` while playing and `EUC ■ 120` while stopped
 (with an external clock, its tempo).
 
 **Page 2: settings.**

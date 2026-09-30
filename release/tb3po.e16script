@@ -176,7 +176,8 @@ end
 -- Header: transport + BPM, or a short message (Gen / Mutate / Undo) for ~1 s.
 local function setTitle(msg)
   if not msg and msgT > 0 then return end      -- let a message finish first
-  local s = msg or (run and "TB-3PO > " or "TB-3PO | ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or SV[8])
+  -- \133 / \135: the E16 font's play / stop glyphs
+  local s = msg or (run and "TB-3PO \133 " or "TB-3PO \135 ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or SV[8])
   if msg then msgT = 80 end
   if s ~= shown then
     page.resetTitle()                 -- title freeze workaround: set on next tick
@@ -211,7 +212,10 @@ local function drawAll(pg)
         .. (k == 1 and v - 7 or k == 5 and v + 2 or v) .. (k == 10 and "%" or ""))
     end
     strip(0, pg)
-    if pg == 2 then leds.updateByIndex(6, FULL, run and C_PLAY or C_ON) end   -- Play: a lit button
+    if pg == 2 then                   -- Play: a lit button with a stop / play glyph
+      leds.updateByIndex(6, FULL, run and C_PLAY or C_ON)
+      slots.update(6, run and "\135" or "\133")
+    end
   end
   setTitle()
 end
@@ -279,7 +283,7 @@ local function generate(new)
   rs = SV[14] + 1
   for s = 1, 32 do roll(s, 3) end
   save()
-  setTitle(("Gen %04X"):format(SV[14]))
+  setTitle(("\153 %04X"):format(SV[14]))   -- a die: the new seed
 end
 
 -- An error in update would stop the E16's updates for good: catch it instead,

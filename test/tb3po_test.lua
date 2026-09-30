@@ -26,9 +26,9 @@ E.store.seed, E.store.ver = 0x3F2A, 52       -- a known seed (current layout)
 E.load("tb3po.lua")
 check(E.listening and E.res == 96 and E.bpm == 120 and E.rate == 10, "clock at 24 ticks per quarter, tempo 120, 10 ms updates")
 E.run(60)
-check(E.title == "Gen 3F2A", "first run generates from the seed (" .. E.title .. ")")
+check(E.title == "\153 3F2A", "first run generates from the seed (" .. E.title .. ")")
 E.run(1000)
-check(E.title == "TB-3PO | 120", "title returns to transport after the message (" .. E.title .. ")")
+check(E.title == "TB-3PO \135 120", "title returns to transport after the message (" .. E.title .. ")")
 check(table.concat(E.labels, " ", 1, 8) == "D+5 L16 A Min Oct4 T0 M25 120",
   "page 1 labels: " .. table.concat(E.labels, " ", 1, 8))
 
@@ -60,7 +60,7 @@ check(pattern() == p1, "Regen with the original density restores the original pa
 -- Generate draws a new seed; Undo swaps back and forth
 E.press(17)
 E.run(60)
-check(E.title:match("^Gen %x%x%x%x$") and E.title ~= "Gen 3F2A", "Generate shows the new seed (" .. E.title .. ")")
+check(E.title:match("^\153 %x%x%x%x$") and E.title ~= "\153 3F2A", "Generate shows the new seed (" .. E.title .. ")")
 local p3 = pattern()
 check(p3 ~= p1, "Generate makes a new pattern")
 E.press(18)
@@ -198,11 +198,11 @@ E.turn(8, -8)                             -- back to 120 internal
 E.sent = {}
 E.extStart(100)
 E.run(600 * 4 - 1)                        -- 16 steps at 100 BPM
-check(#ons() > 0 and E.title == "TB-3PO > 100", "follows external transport (" .. E.title .. ")")
+check(#ons() > 0 and E.title == "TB-3PO \133 100", "follows external transport (" .. E.title .. ")")
 E.extStop(); E.run(30)
 local hang2 = 0
 for _, m in ipairs(E.sent) do if m.st == 0x90 then hang2 = hang2 + (m.d2 > 0 and 1 or -1) end end
-check(hang2 == 0 and E.title == "TB-3PO | 120", "external Stop releases the note (" .. E.title .. ")")
+check(hang2 == 0 and E.title == "TB-3PO \135 120", "external Stop releases the note (" .. E.title .. ")")
 
 -- settings page
 E.show(2)

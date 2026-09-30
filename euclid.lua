@@ -169,10 +169,11 @@ local function drawAll(pg)
         or k == 4 and "Ch" .. v or (v == 0 and "All" or "O" .. v))
     end
     leds.updateByIndex(6, FULL, run and C_HIT or C_ON)   -- always lit: it's a button
-    slots.update(6, run and "Stop" or "Play")
+    slots.update(6, run and "\135" or "\133")   -- the E16 font's stop / play glyphs
   end
   -- Title freeze workaround: reset now, set the new text on the next update.
-  local s = (run and "EUC > " or "EUC | ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or bpm)
+  -- \133 / \135: the E16 font's play / stop glyphs
+  local s = (run and "EUC \133 " or "EUC \135 ") .. (tp == 0 and math.floor(clock.getBpm() + 0.5) or bpm)
   if s ~= shown then
     page.resetTitle()
     title, shown = s, s

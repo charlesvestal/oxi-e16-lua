@@ -191,6 +191,12 @@ Source tags:
 
 ## Labels and title
 
+- **The E16 font has icons at codes 128–153** (write them as `"\133"` escapes in Lua). **[HW]**
+  128–131 → ← ↑ ↓ · 132 ⊘ · 133 ▶ play · 134 ❚❚ pause · 135 ■ stop · 136 ⏩ · 137 ⏪ ·
+  138 ⏮ · 139 ⏭ · 140 ▸ · 141 ◂ · 142 lock · 143 open lock · 144–151 small corner and tick
+  marks · 152 lock · 153 die. 154 and up are blank. Each counts as one of a label's 4
+  characters, and they work in the header too.
+
 - `slots.update(i, text)` shows up to 4 characters, per physical slot, persisting across pages. Reset
   them when leaving your page. **[GUIDE] [HW]**
 - During `onPageChange(prev, curr)`, don't rely on `controller.getPage()` to return `curr`. Pass `curr` through. **[?]**

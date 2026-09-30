@@ -111,7 +111,7 @@ check(E.rings[2].c == 0, "pushing the sounding pad again stops it (latch)")
 -- settings page
 E.show(12); E.run(60)
 check(E.title == "Chord settings", "settings title")
-check(E.labels[1] == "T0" and E.labels[3] == "V100" and E.labels[4] == "Ltch" and E.labels[6] == "Up",
+check(E.labels[1] == "T0" and E.labels[3] == "V100" and E.labels[4] == "\142Lch" and E.labels[6] == "\130Up",
   "settings labels: " .. table.concat(E.labels, " ", 1, 8))
 
 -- gate 0.5 s
@@ -136,7 +136,7 @@ for i = 2, #s do if s[i].t - s[i - 1].t < 40 or s[i].d1 < s[i - 1].d1 then space
 check(spaced, "strum up: notes rise, ~50 ms apart (" .. notes(s) .. ")")
 pad(1, 1)
 set(6, 1)
-check(E.labels[6] == "Down", "direction Down")
+check(E.labels[6] == "\131Dn", "direction Down")
 E.sent = {}
 pad(1, 1)
 E.run(600)
@@ -189,7 +189,7 @@ end
 set(4, -40)
 check(E.labels[4] == "Held", "length bottoms out at Held (" .. E.labels[4] .. ")")
 set(4, 1)
-check(E.labels[4] == "Ltch", "then Ltch (" .. E.labels[4] .. ")")
+check(E.labels[4] == "\142Lch", "then Ltch (" .. E.labels[4] .. ")")
 set(4, 5)
 E.sent = {}; pad(1, 2); E.run(300)
 local on = #ons()

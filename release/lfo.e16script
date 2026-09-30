@@ -166,7 +166,8 @@ local function drawAll(pg)
     slots.update(1, out == 0 and "All" or "O" .. out)
     leds.updateByIndex(2, (bpm - 20) * FULL // 280, C_ON)
     slots.update(2, "" .. bpm)
-    slots.update(3, "Stop")
+    slots.update(3, "\135Off")         -- glyphs: stop, and back-to-start
+    slots.update(4, "\138Rst")
     leds.updateByIndex(3, FULL, C_OFF)   -- the push-only buttons stay lit
     leds.updateByIndex(4, FULL, C_OFF)
   end

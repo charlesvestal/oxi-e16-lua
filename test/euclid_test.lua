@@ -48,7 +48,7 @@ check(E.rate == 10, "update rate 10 ms (gates)")
 check(E.listening and E.res == 96, "listens to the clock at 24 ticks per quarter")
 check(E.bpm == 120, "sets the internal tempo from BPM")
 E.run(100)
-check(E.title == "EUC | 120", "title shows stopped + bpm ('" .. E.title .. "')")
+check(E.title == "EUC \135 120", "title shows stopped + bpm ('" .. E.title .. "')")
 check(E.labels[1] == "L16" and E.labels[2] == "P4" and E.labels[3] == "R0" and E.labels[4] == "C2",
   "labels for track 1")
 check(E.labels[8] == "D2" and E.labels[7] == "R+4", "track 2 labels")
@@ -91,7 +91,7 @@ E.sent = {}
 local t0 = E.now
 press(3)
 E.run(60000 - 1)
-check(E.title == "EUC > 120", "title playing (" .. E.title .. ")")
+check(E.title == "EUC \133 120", "title playing (" .. E.title .. ")")
 press(3)
 E.run(0)
 local ons = noteOns(t0, t0 + 60000, 36)
@@ -147,7 +147,7 @@ E.extStart(100)
 E.run(2400 - 1)
 check(#noteOns(t0, E.now, 36) == 16, "follows external clock (16 steps at 100 BPM in 2.4 s: " .. #noteOns(t0, E.now, 36) .. ")")
 E.run(100)
-check(E.title == "EUC > 100", "header shows the external tempo (" .. E.title .. ")")
+check(E.title == "EUC \133 100", "header shows the external tempo (" .. E.title .. ")")
 press(3)                                        -- Play/Stop: go quiet, transport keeps running
 E.sent = {}; t0 = E.now
 E.run(1000)
@@ -158,7 +158,7 @@ check(#noteOns(t0, E.now) > 0, "Play rejoins the running external transport")
 E.extStop(); E.run(0)
 E.sent = {}; t0 = E.now
 E.run(1000)
-check(#noteOns(t0, E.now) == 0 and E.title == "EUC | 120", "external Stop stops (" .. E.title .. ")")
+check(#noteOns(t0, E.now) == 0 and E.title == "EUC \135 120", "external Stop stops (" .. E.title .. ")")
 E.extContinue(); E.run(500)
 check(#noteOns(t0, E.now) > 0, "external Continue resumes")
 E.extStop(); E.extStop(); E.run(0)            -- repeated stops are harmless
@@ -239,7 +239,7 @@ E.store.L1, E.store.P1, E.store.N1 = 7, 3, 60
 page.onVarChange("L1")
 check(E.labels[1] == "L7" and E.labels[2] == "P3" and E.labels[4] == "C4", "onVarChange reloads track")
 E.store.bpm = 140; page.onVarChange("bpm"); E.run(100)
-check(E.title == "EUC | 140" and E.bpm == 140, "title and internal tempo follow bpm var")
+check(E.title == "EUC \135 140" and E.bpm == 140, "title and internal tempo follow bpm var")
 
 -- playhead ring moves while playing
 press(3)
@@ -259,7 +259,7 @@ press(3); E.run(0)
 -- settings page
 E.show(2)
 check(E.labels[1] == "140" and E.labels[2] == "1/16" and E.labels[3] == "G60"
-  and E.labels[4] == "Ch10" and E.labels[5] == "All" and E.labels[6] == "Play",
+  and E.labels[4] == "Ch10" and E.labels[5] == "All" and E.labels[6] == "\133",
   "settings labels: " .. table.concat({tostring(E.labels[1]), tostring(E.labels[2]), tostring(E.labels[3]),
     tostring(E.labels[4]), tostring(E.labels[5]), tostring(E.labels[6])}, " "))
 sturn(1, 4); E.run(100)
@@ -282,11 +282,11 @@ sturn(5, 1)
 check(E.store.out == 1 and E.labels[5] == "O1", "output encoder")
 sturn(5, -1)
 sturn(6, 1)
-check(E.labels[6] == "Play", "turning encoder 6 does nothing")
+check(E.labels[6] == "\133", "turning encoder 6 does nothing")
 E.press(54); E.run(100)
-check(E.title == "EUC > 120" and E.tp == 2 and E.labels[6] == "Stop", "settings Play knob starts playback (" .. E.title .. ")")
+check(E.title == "EUC \133 120" and E.tp == 2 and E.labels[6] == "\135", "settings Play knob starts playback (" .. E.title .. ")")
 E.press(54); E.run(100)
-check(E.title == "EUC | 120" and E.tp == nil, "settings push stops playback")
+check(E.title == "EUC \135 120" and E.tp == nil, "settings push stops playback")
 E.show(1)
 check(E.labels[1] == "L7", "returning to page redraws")
 
